@@ -9,36 +9,39 @@
 
 <h1>Relic</h1>
 
-<p>Current relic: @currentRelic</p>
+<p>Current relic: @model.RelicType</p>
 
-<select @bind="currentRelic">
-    @foreach (var cnt in Relics)
+<EditForm Model="model" OnValidSubmit="Queue">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputSelect @bind-Value="model.RelicType">
+        @foreach (var cnt in Relics)
+        {
+            <option value="@cnt">@(Enum.GetName(typeof(RelicType), cnt))</option>
+        }
+    </InputSelect>
+
+    <InputText @bind-Value="model.User"/>
+
+    <button type="submit" disabled="@(!IsConnected)">Queue</button>
+</EditForm>
+
+<dl id="relicList">
+    @foreach (var relic in currentQueue)
     {
-        <option value="@cnt">@(Enum.GetName(typeof(RelicType), cnt))</option>
+        <dt>@relic.User</dt>
+        <dd>@relic.RelicType</dd>
     }
-</select>
-
-<input @bind="currentUser"/>
-
-<button @onclick="Send" disabled="@(!IsConnected)">Send</button>
-<button @onclick="Queue" disabled="@(!IsConnected)">Queue</button>
-
-
-<ul id="relicList">
-    @foreach (var relic in currentRelics)
-    {
-        <li>@relic</li>
-    }
-</ul>
+</dl>
 
 
 @code {
-    private RelicType currentRelic { get; set; } = RelicType.A2;
-    private string currentUser { get; set; }
+    private RelicQueueItem model { get; set; } = new RelicQueueItem();
     private IEnumerable<RelicType> Relics => new List<RelicType> { RelicType.A1, RelicType.A2, RelicType.A3 };
 
     private HubConnection hubConnection;
-    private List<RelicType> currentRelics = new List<RelicType>();
+    private List<RelicQueueItem> currentQueue = new List<RelicQueueItem>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -46,9 +49,9 @@
             .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"))
             .Build();
 
-        hubConnection.On<List<RelicType>>("ReceiveRelicList", (relics) =>
+        hubConnection.On<List<RelicQueueItem>>("ReceiveRelicQueue", (relics) =>
         {
-            currentRelics = relics;
+            currentQueue = relics;
             StateHasChanged();
         });
 
@@ -57,11 +60,8 @@
         await hubConnection.StartAsync();
     }
 
-    Task Send() =>
-        hubConnection.SendAsync("AddRelic", "", currentRelic);
-
     Task Queue() =>
-        hubConnection.SendAsync("QueueRelic", currentUser, currentRelic);
+        hubConnection.SendAsync("QueueRelic", model);
     public bool IsConnected =>
         hubConnection.State == HubConnectionState.Connected;
 

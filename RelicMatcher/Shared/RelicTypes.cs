@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.ComponentModel.DataAnnotations;
+
 
 namespace RelicMatcher.Shared
 {
@@ -10,4 +13,12 @@ namespace RelicMatcher.Shared
         A3,
         A4
     }
+    public class RelicQueueItem
+    {
+        [Required]
+        public string User { get; set; }
+        [Required]
+        public RelicType RelicType { get; set; }
+    }
+
 }
