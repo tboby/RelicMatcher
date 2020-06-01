@@ -18,7 +18,10 @@
     }
 </select>
 
+<input @bind="currentUser"/>
+
 <button @onclick="Send" disabled="@(!IsConnected)">Send</button>
+<button @onclick="Queue" disabled="@(!IsConnected)">Queue</button>
 
 
 <ul id="relicList">
@@ -31,6 +34,7 @@
 
 @code {
     private RelicType currentRelic { get; set; } = RelicType.A2;
+    private string currentUser { get; set; }
     private IEnumerable<RelicType> Relics => new List<RelicType> { RelicType.A1, RelicType.A2, RelicType.A3 };
 
     private HubConnection hubConnection;
@@ -56,6 +60,8 @@
     Task Send() =>
         hubConnection.SendAsync("AddRelic", "", currentRelic);
 
+    Task Queue() =>
+        hubConnection.SendAsync("QueueRelic", currentUser, currentRelic);
     public bool IsConnected =>
         hubConnection.State == HubConnectionState.Connected;
 
