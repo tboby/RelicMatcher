@@ -1,0 +1,67 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.SignalR.Client
+@using RelicMatcher.Shared
+@inject NavigationManager NavigationManager
+@implements IDisposable
+@page "/relic"
+<h3>Relic</h3>
+
+
+<h1>Relic</h1>
+
+<p>Current relic: @currentRelic</p>
+
+<select @bind="currentRelic">
+    @foreach (var cnt in Relics)
+    {
+        <option value="@cnt">@(Enum.GetName(typeof(RelicType), cnt))</option>
+    }
+</select>
+
+<button @onclick="Send" disabled="@(!IsConnected)">Send</button>
+
+
+<ul id="relicList">
+    @foreach (var relic in currentRelics)
+    {
+        <li>@relic</li>
+    }
+</ul>
+
+
+@code {
+    private RelicType currentRelic { get; set; } = RelicType.A2;
+    private IEnumerable<RelicType> Relics => new List<RelicType> { RelicType.A1, RelicType.A2, RelicType.A3 };
+
+    private HubConnection hubConnection;
+    private List<RelicType> currentRelics = new List<RelicType>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"))
+            .Build();
+
+        hubConnection.On<List<RelicType>>("ReceiveRelicList", (relics) =>
+        {
+            currentRelics = relics;
+            StateHasChanged();
+        });
+
+
+
+        await hubConnection.StartAsync();
+    }
+
+    Task Send() =>
+        hubConnection.SendAsync("AddRelic", "", currentRelic);
+
+    public bool IsConnected =>
+        hubConnection.State == HubConnectionState.Connected;
+
+    public void Dispose()
+    {
+        _ = hubConnection.DisposeAsync();
+    }
+
+}
