@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Linq;
 using RelicMatcher.Server.Hubs;
+using RelicMatcher.Server.Service;
 
 namespace RelicMatcher.Server
 {
@@ -31,6 +32,8 @@ namespace RelicMatcher.Server
                     new[] { "application/octet-stream" });
             });
             services.AddRazorPages();
+
+            services.AddSingleton<TicketService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

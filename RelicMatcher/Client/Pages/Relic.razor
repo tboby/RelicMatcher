@@ -4,44 +4,70 @@
 @inject NavigationManager NavigationManager
 @implements IDisposable
 @page "/relic"
-<h3>Relic</h3>
-
-
 <h1>Relic</h1>
 
-<p>Current relic: @model.RelicType</p>
-
-<EditForm Model="model" OnValidSubmit="Queue">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <InputSelect @bind-Value="model.RelicType">
-        @foreach (var cnt in Relics)
-        {
-            <option value="@cnt">@(Enum.GetName(typeof(RelicType), cnt))</option>
-        }
-    </InputSelect>
-
-    <InputText @bind-Value="model.User"/>
-
-    <button type="submit" disabled="@(!IsConnected)">Queue</button>
-</EditForm>
-
-<dl id="relicList">
-    @foreach (var relic in currentQueue)
+@if (RelicQueueState == RelicQueueState.None || RelicQueueState == RelicQueueState.Queued)
+{
+    if (RelicQueueState == RelicQueueState.Queued)
     {
-        <dt>@relic.User</dt>
-        <dd>@relic.RelicType</dd>
+        <p>Currently queued for relic: @queuedRelic</p>
     }
-</dl>
+    else
+    {
+        <p>Not queued</p>
+    }
+    <EditForm Model="model" OnValidSubmit="Queue">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <InputSelect @bind-Value="model.RelicType">
+            @foreach (var cnt in Relics)
+                {
+                <option value="@cnt">@(Enum.GetName(typeof(RelicType), cnt))</option>
+                }
+        </InputSelect>
+
+        <InputText @bind-Value="model.User" />
+
+        <button type="submit" disabled="@(!IsConnected)">Queue</button>
+        @if (RelicQueueState == RelicQueueState.Queued)
+        {
+            <button @onclick="DeQueue" disabled="@(!IsConnected)">Stop queueing</button>
+        }
+    </EditForm>
+
+    <dl id="relicList">
+        @foreach (var relic in currentQueue)
+        {
+            <dt>@relic.User</dt>
+            <dd>@relic.RelicType</dd>
+        }
+    </dl>
+}
+else if (RelicQueueState == RelicQueueState.PartyFound)
+{
+    <h3>Party found!</h3>
+    <p>Relic: @currentParty.RelicType</p>
+    <h4>Members:</h4>
+    <ul>
+        @foreach (var member in currentParty.Members)
+        {
+            <li>@member.DisplayName</li>
+        }
+    </ul>
+}
 
 
 @code {
+    private RelicQueueState RelicQueueState { get; set; } = RelicQueueState.None;
     private RelicQueueItem model { get; set; } = new RelicQueueItem();
     private IEnumerable<RelicType> Relics => new List<RelicType> { RelicType.A1, RelicType.A2, RelicType.A3 };
 
     private HubConnection hubConnection;
     private List<RelicQueueItem> currentQueue = new List<RelicQueueItem>();
+
+    private Party currentParty;
+    private RelicType queuedRelic { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -55,13 +81,33 @@
             StateHasChanged();
         });
 
+        hubConnection.On<Party>("ReceivePartyFound", (party) =>
+        {
+            RelicQueueState = RelicQueueState.PartyFound;
+            currentParty = party;
+            StateHasChanged();
+        });
+
 
 
         await hubConnection.StartAsync();
     }
 
     Task Queue() =>
-        hubConnection.SendAsync("QueueRelic", model);
+        hubConnection.SendAsync("QueueRelic", model)
+        .ContinueWith(_ =>
+        {
+            RelicQueueState = RelicQueueState.Queued;
+            queuedRelic = model.RelicType;
+        });
+
+    Task DeQueue() =>
+        hubConnection.SendAsync("DeQueueRelic")
+        .ContinueWith(_ =>
+        {
+            RelicQueueState = RelicQueueState.None;
+        });
+
     public bool IsConnected =>
         hubConnection.State == HubConnectionState.Connected;
 

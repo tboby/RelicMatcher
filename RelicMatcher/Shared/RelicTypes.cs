@@ -7,6 +7,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RelicMatcher.Shared
 {
+    public class UserWrapper
+    {
+        public string ConnectionID { get; set; }
+        public string DisplayName { get; set; }
+    }
     public enum RelicType {
         A1,
         A2,
@@ -19,6 +24,19 @@ namespace RelicMatcher.Shared
         public string User { get; set; }
         [Required]
         public RelicType RelicType { get; set; }
+    }
+
+    public class Party
+    {
+        public Guid PartyId { get; } = Guid.NewGuid();
+        public RelicType RelicType { get; set; }
+        public IEnumerable<UserWrapper> Members { get; set; }
+    }
+    public enum RelicQueueState
+    {
+        None,
+        Queued,
+        PartyFound
     }
 
 }
