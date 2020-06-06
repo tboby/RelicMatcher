@@ -33,6 +33,21 @@ namespace RelicMatcher.Server.Hubs
             _ticketService.DeleteTicket(Context.ConnectionId);
             await UpdateClients();
         }
+
+        public async Task AcceptAssignment()
+        {
+            var ticket = _ticketService.GetTicket(Context.ConnectionId);
+            ticket.Accepted = true;
+            CheckAssignment(ticket.Assignment);
+            await UpdateParty(ticket.Assignment);
+
+        }
+
+        public async Task Reset()
+        {
+            _ticketService.DeleteTicket(Context.ConnectionId);
+            await Clients.Caller.SendAsync("ReceiveRelicQueue", QueueList);
+        }
         public override async Task OnConnectedAsync()
         {
             await Clients.Caller.SendAsync("ReceiveRelicQueue", QueueList);
@@ -58,6 +73,32 @@ namespace RelicMatcher.Server.Hubs
                     {ConnectionID = x.ConnectionId, DisplayName = x.DisplayName});
                 await Clients.Clients(members.Select(x => x.ConnectionId).ToList())
                     .SendAsync("ReceivePartyFound", new Party(){Members = userWrappers, RelicType = group.Key});
+            }
+        }
+
+        private async Task UpdateParty(Assignment assignment)
+        {
+            var userWrappers = assignment.Members.Select(x => new UserWrapper()
+            {
+                ConnectionID = x.ConnectionId,
+                DisplayName = x.DisplayName,
+                Accepted = x.Accepted
+            });
+            var party = new Party()
+            {
+                Done = assignment.Done,
+                Members = userWrappers,
+                RelicType = assignment.RelicType
+            };
+            await Clients.Clients(assignment.Members.Select(x => x.ConnectionId).ToList())
+                .SendAsync("ReceivePartyStatus", party);
+        }
+
+        private void CheckAssignment(Assignment assignment)
+        {
+            if (assignment.Members.All(x => x.Accepted))
+            {
+                assignment.Done = true
             }
         }
 

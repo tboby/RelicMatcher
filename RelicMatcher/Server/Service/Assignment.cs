@@ -16,5 +16,6 @@ namespace RelicMatcher.Server.Service
 
         public RelicType RelicType { get; set; }
         public List<Ticket> Members { get; set; }
+        public bool Done { get; set; }
     }
 }

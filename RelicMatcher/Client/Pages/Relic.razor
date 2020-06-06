@@ -52,9 +52,24 @@ else if (RelicQueueState == RelicQueueState.PartyFound)
     <ul>
         @foreach (var member in currentParty.Members)
         {
-            <li>@member.DisplayName</li>
+            <li>@member.DisplayName: @member.Accepted</li>
         }
     </ul>
+    <button @onclick="Accept" disabled="@(!IsConnected)">Accept</button>
+
+}
+else if (RelicQueueState == RelicQueueState.Done)
+{
+    <h3>Party complete!</h3>
+    <p>Relic: @currentParty.RelicType</p>
+    <h4>Members:</h4>
+    <ul>
+        @foreach (var member in currentParty.Members)
+        {
+            <li>/inv @member.DisplayName</li>
+        }
+    </ul>
+    <button @onclick="Reset" disabled="@(!IsConnected)">Reset</button>
 }
 
 
@@ -88,6 +103,16 @@ else if (RelicQueueState == RelicQueueState.PartyFound)
             StateHasChanged();
         });
 
+        hubConnection.On<Party>("ReceivePartyStatus", (party) =>
+        {
+            currentParty = party;
+            if (currentParty.Done)
+            {
+                RelicQueueState = RelicQueueState.Done;
+            }
+            StateHasChanged();
+        });
+
 
 
         await hubConnection.StartAsync();
@@ -107,6 +132,12 @@ else if (RelicQueueState == RelicQueueState.PartyFound)
         {
             RelicQueueState = RelicQueueState.None;
         });
+
+    Task Accept() =>
+        hubConnection.SendAsync("AcceptAssignment");
+
+    Task Reset() =>
+        hubConnection.SendAsync("Reset");
 
     public bool IsConnected =>
         hubConnection.State == HubConnectionState.Connected;

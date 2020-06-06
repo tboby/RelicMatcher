@@ -15,5 +15,6 @@ namespace RelicMatcher.Server.Service
         public string DisplayName { get; set; }
         public RelicType RelicType { get; set; }
         public Assignment? Assignment { get; set; }
+        public bool Accepted { get; set; }
     }
 }

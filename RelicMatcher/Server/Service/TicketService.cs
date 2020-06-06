@@ -53,6 +53,7 @@ namespace RelicMatcher.Server.Service
             foreach (var ticket in tickets)
             {
                 ticket.Assignment = assignment;
+                ticket.Accepted = false;
             }
 
             return assignment;

@@ -11,6 +11,7 @@ namespace RelicMatcher.Shared
     {
         public string ConnectionID { get; set; }
         public string DisplayName { get; set; }
+        public bool Accepted { get; set; }
     }
     public enum RelicType {
         A1,
@@ -31,12 +32,14 @@ namespace RelicMatcher.Shared
         public Guid PartyId { get; } = Guid.NewGuid();
         public RelicType RelicType { get; set; }
         public IEnumerable<UserWrapper> Members { get; set; }
+        public bool Done { get; set; }
     }
     public enum RelicQueueState
     {
         None,
         Queued,
-        PartyFound
+        PartyFound,
+        Done
     }
 
 }
