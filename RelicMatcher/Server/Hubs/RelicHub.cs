@@ -98,7 +98,7 @@ namespace RelicMatcher.Server.Hubs
         {
             if (assignment.Members.All(x => x.Accepted))
             {
-                assignment.Done = true
+                assignment.Done = true;
             }
         }
 
