@@ -34,12 +34,6 @@ namespace RelicMatcher.Shared
         public IEnumerable<UserWrapper> Members { get; set; }
         public bool Done { get; set; }
     }
-    public enum RelicQueueState
-    {
-        None,
-        Queued,
-        PartyFound,
-        Done
-    }
+
 
 }

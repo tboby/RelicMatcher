@@ -19,9 +19,9 @@ namespace RelicMatcher.Server.Service
             return ticket;
         }
 
-        public Ticket GetTicket(string connectionID)
+        public Ticket? GetTicket(string connectionID)
         {
-            return Tickets[connectionID];
+            return Tickets.GetValueOrDefault(connectionID);
         }
 
         public void DeleteTicket(string connectionID)

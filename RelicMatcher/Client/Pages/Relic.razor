@@ -1,16 +1,18 @@
 ﻿@using System.ComponentModel.DataAnnotations
+@using System.Diagnostics
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Logging
 @using RelicMatcher.Shared
 @inject NavigationManager NavigationManager
 @implements IDisposable
 @page "/relic"
 <h1>Relic</h1>
 
-@if (RelicQueueState == RelicQueueState.None || RelicQueueState == RelicQueueState.Queued)
+@if (RelicQueueStatus == RelicQueueStatus.None || RelicQueueStatus == RelicQueueStatus.Queued)
 {
-    if (RelicQueueState == RelicQueueState.Queued)
+    if (RelicQueueStatus == RelicQueueStatus.Queued)
     {
-        <p>Currently queued for relic: @queuedRelic</p>
+        <p>Currently queued for relic: @QueuedRelic</p>
     }
     else
     {
@@ -30,7 +32,7 @@
         <InputText @bind-Value="model.User" />
 
         <button type="submit" disabled="@(!IsConnected)">Queue</button>
-        @if (RelicQueueState == RelicQueueState.Queued)
+        @if (RelicQueueStatus == RelicQueueStatus.Queued)
         {
             <button @onclick="DeQueue" disabled="@(!IsConnected)">Stop queueing</button>
         }
@@ -44,13 +46,13 @@
         }
     </dl>
 }
-else if (RelicQueueState == RelicQueueState.PartyFound)
+else if (RelicQueueStatus == RelicQueueStatus.PartyFound)
 {
     <h3>Party found!</h3>
-    <p>Relic: @currentParty.RelicType</p>
+    <p>Relic: @CurrentParty.RelicType</p>
     <h4>Members:</h4>
     <ul>
-        @foreach (var member in currentParty.Members)
+        @foreach (var member in CurrentParty.Members)
         {
             <li>@member.DisplayName: @member.Accepted</li>
         }
@@ -58,13 +60,13 @@ else if (RelicQueueState == RelicQueueState.PartyFound)
     <button @onclick="Accept" disabled="@(!IsConnected)">Accept</button>
 
 }
-else if (RelicQueueState == RelicQueueState.Done)
+else if (RelicQueueStatus == RelicQueueStatus.Done)
 {
     <h3>Party complete!</h3>
-    <p>Relic: @currentParty.RelicType</p>
+    <p>Relic: @CurrentParty.RelicType</p>
     <h4>Members:</h4>
     <ul>
-        @foreach (var member in currentParty.Members)
+        @foreach (var member in CurrentParty.Members)
         {
             <li>/inv @member.DisplayName</li>
         }
@@ -74,20 +76,36 @@ else if (RelicQueueState == RelicQueueState.Done)
 
 
 @code {
-    private RelicQueueState RelicQueueState { get; set; } = RelicQueueState.None;
+    private UserRelicQueueState UserRelicQueueState { get; set; }
+    private RelicQueueStatus RelicQueueStatus => UserRelicQueueState.RelicQueueStatus;
+    private RelicType? QueuedRelic => UserRelicQueueState.RelicType;
+    private Party? CurrentParty => UserRelicQueueState.Party;
+    //private RelicQueueState RelicQueueState { get; set; } = RelicQueueState.None;
     private RelicQueueItem model { get; set; } = new RelicQueueItem();
     private IEnumerable<RelicType> Relics => new List<RelicType> { RelicType.A1, RelicType.A2, RelicType.A3 };
 
     private HubConnection hubConnection;
     private List<RelicQueueItem> currentQueue = new List<RelicQueueItem>();
 
-    private Party currentParty;
-    private RelicType queuedRelic { get; set; }
+    //private Party currentParty;
+    //private RelicType queuedRelic { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        UserRelicQueueState = UserRelicQueueState.DefaultState;
+        ;
         hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"))
+            //.ConfigureLogging(logging =>
+            //{
+            //// Log to the Console
+            //logging.AddConsole();
+
+            //// This will set ALL logging to Debug level
+            //logging.SetMinimumLevel(LogLevel.Debug);
+
+
+            //})
             .Build();
 
         hubConnection.On<List<RelicQueueItem>>("ReceiveRelicQueue", (relics) =>
@@ -96,42 +114,22 @@ else if (RelicQueueState == RelicQueueState.Done)
             StateHasChanged();
         });
 
-        hubConnection.On<Party>("ReceivePartyFound", (party) =>
+        hubConnection.On<UserRelicQueueState>("ReceiveUserState", (userState) =>
         {
-            RelicQueueState = RelicQueueState.PartyFound;
-            currentParty = party;
+            UserRelicQueueState = userState;
+            Debug.WriteLine("test");
             StateHasChanged();
         });
-
-        hubConnection.On<Party>("ReceivePartyStatus", (party) =>
-        {
-            currentParty = party;
-            if (currentParty.Done)
-            {
-                RelicQueueState = RelicQueueState.Done;
-            }
-            StateHasChanged();
-        });
-
-
+        Debug.WriteLine("test1");
 
         await hubConnection.StartAsync();
     }
 
     Task Queue() =>
-        hubConnection.SendAsync("QueueRelic", model)
-        .ContinueWith(_ =>
-        {
-            RelicQueueState = RelicQueueState.Queued;
-            queuedRelic = model.RelicType;
-        });
+        hubConnection.SendAsync("QueueRelic", model);
 
     Task DeQueue() =>
-        hubConnection.SendAsync("DeQueueRelic")
-        .ContinueWith(_ =>
-        {
-            RelicQueueState = RelicQueueState.None;
-        });
+        hubConnection.SendAsync("DeQueueRelic");
 
     Task Accept() =>
         hubConnection.SendAsync("AcceptAssignment");

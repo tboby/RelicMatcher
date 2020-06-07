@@ -16,6 +16,10 @@ namespace RelicMatcher.Client
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("app");
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole();
+
+            //builder.Logging.AddConsole();
 
             builder.Services.AddTransient(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
