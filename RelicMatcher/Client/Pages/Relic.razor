@@ -1,5 +1,6 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Logging
 @using RelicMatcher.Shared
 @inject NavigationManager NavigationManager
 @implements IDisposable
@@ -88,6 +89,7 @@ else if (RelicQueueState == RelicQueueState.Done)
     {
         hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"))
+            .ConfigureLogging(logging => logging.AddConsole())
             .Build();
 
         hubConnection.On<List<RelicQueueItem>>("ReceiveRelicQueue", (relics) =>
