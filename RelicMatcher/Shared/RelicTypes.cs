@@ -29,7 +29,7 @@ namespace RelicMatcher.Shared
 
     public class Party
     {
-        public Guid PartyId { get; } = Guid.NewGuid();
+        public Guid PartyId { get; set; } = Guid.NewGuid();
         public RelicType RelicType { get; set; }
         public IEnumerable<UserWrapper> Members { get; set; }
         public bool Done { get; set; }

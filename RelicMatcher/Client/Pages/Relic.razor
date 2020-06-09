@@ -4,6 +4,7 @@
 @using Microsoft.Extensions.Logging
 @using RelicMatcher.Shared
 @inject NavigationManager NavigationManager
+@inject ILoggerProvider LoggerProvider
 @implements IDisposable
 @page "/relic"
 <h1>Relic</h1>
@@ -96,6 +97,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         ;
         hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"))
+            .ConfigureLogging(logging => logging.AddProvider(LoggerProvider))
             //.ConfigureLogging(logging =>
             //{
             //// Log to the Console
@@ -117,7 +119,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         hubConnection.On<UserRelicQueueState>("ReceiveUserState", (userState) =>
         {
             UserRelicQueueState = userState;
-            Debug.WriteLine("test");
+            LoggerProvider.CreateLogger("Test").LogInformation(userState.RelicQueueStatus.ToString());
             StateHasChanged();
         });
         Debug.WriteLine("test1");

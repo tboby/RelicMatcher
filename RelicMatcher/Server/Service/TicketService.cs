@@ -3,12 +3,18 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using RelicMatcher.Shared;
 
 namespace RelicMatcher.Server.Service
 {
     public class TicketService
     {
+        private readonly ILogger<TicketService> _logger;
+        public TicketService(ILogger<TicketService> logger)
+        {
+            _logger = logger;
+        }
         private Dictionary<string, Ticket> Tickets { get; set; } = new Dictionary<string, Ticket>();
         //private HashSet<Ticket> Index { get; set; } = new HashSet<Ticket>();
 
@@ -21,6 +27,7 @@ namespace RelicMatcher.Server.Service
 
         public Ticket? GetTicket(string connectionID)
         {
+            _logger.LogDebug(Tickets.Keys.ToString());
             return Tickets.GetValueOrDefault(connectionID);
         }
 

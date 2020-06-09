@@ -21,6 +21,7 @@ namespace RelicMatcher.Server
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
+                    webBuilder.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Debug));
                 });
     }
 }
