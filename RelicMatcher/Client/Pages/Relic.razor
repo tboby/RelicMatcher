@@ -7,6 +7,7 @@
 @inject NavigationManager NavigationManager
 @inject ILoggerProvider LoggerProvider
 @inject ISessionStorage sessionStorage
+@inject HttpClient Http
 @implements IDisposable
 @page "/relic"
 <h1>Relic</h1>
@@ -15,13 +16,13 @@
 {
     if (RelicQueueStatus == RelicQueueStatus.Queued)
     {
-        <p>Currently queued for relic: @QueuedRelic</p>
+        <p>Currently queued for relic: @QueuedRelic.DisplayName</p>
     }
     else if (IsConnected == false)
     {
         <p>Disconnected</p>
     }
-    else if(RelicQueueStatus == RelicQueueStatus.None)
+    else if (RelicQueueStatus == RelicQueueStatus.None)
     {
         <p>Not queued</p>
     }
@@ -29,11 +30,11 @@
         <DataAnnotationsValidator />
         <ValidationSummary />
 
-        <InputSelect @bind-Value="model.RelicType">
+        <InputSelect @bind-Value="model.RelicUniqueName">
             @foreach (var cnt in Relics)
-                {
-                <option value="@cnt">@(Enum.GetName(typeof(RelicType), cnt))</option>
-                }
+            {
+                <option value="@cnt.UniqueName">@cnt.DisplayName</option>
+            }
         </InputSelect>
 
         <InputText @bind-Value="model.User" />
@@ -49,7 +50,7 @@
         @foreach (var relic in currentQueue)
         {
             <dt>@relic.User</dt>
-            <dd>@relic.RelicType</dd>
+            <dd>@relic.RelicDisplayName</dd>
         }
     </dl>
 }
@@ -71,7 +72,7 @@ else if (RelicQueueStatus == RelicQueueStatus.PartyFound)
 else if (RelicQueueStatus == RelicQueueStatus.Done)
 {
     <h3>Party complete!</h3>
-    <p>Relic: @CurrentParty.RelicType</p>
+    <p>Relic: @CurrentParty.RelicType.DisplayName</p>
     <h4>Members:</h4>
     <ul>
         @foreach (var member in CurrentParty.Members)
@@ -89,11 +90,11 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
     private RelicType? QueuedRelic => UserRelicQueueState.RelicType;
     private Party? CurrentParty => UserRelicQueueState.Party;
     //private RelicQueueState RelicQueueState { get; set; } = RelicQueueState.None;
-    private RelicQueueItem model { get; set; } = new RelicQueueItem();
-    private IEnumerable<RelicType> Relics => new List<RelicType> { RelicType.A1, RelicType.A2, RelicType.A3 };
+    private RelicQueueInput model { get; set; } = new RelicQueueInput();
+    private IEnumerable<RelicType> Relics { get; set; } = new List<RelicType>();
 
     private HubConnection hubConnection;
-    private List<RelicQueueItem> currentQueue = new List<RelicQueueItem>();
+    private List<RelicQueueDisplay> currentQueue = new List<RelicQueueDisplay>();
 
     //private Party currentParty;
     //private RelicType queuedRelic { get; set; }
@@ -101,10 +102,13 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
     protected override async Task OnInitializedAsync()
     {
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"), opts => {})
+            .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"), opts => { })
 
             .ConfigureLogging(logging => logging.AddProvider(LoggerProvider))
             .Build();
+
+        UserRelicQueueState = UserRelicQueueState.DefaultState;
+        Relics = await Http.GetFromJsonAsync<List<RelicType>>("api/RelicData");
 
         var key = "userSession";
         Guid userGuid = Guid.NewGuid();
@@ -112,15 +116,14 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         {
             userGuid = await sessionStorage.GetItem<Guid>(key);
         }
-        catch(ArgumentNullException)
+        catch (ArgumentNullException)
         {
             await sessionStorage.SetItem<Guid>(key, userGuid);
         }
 
-        UserRelicQueueState = UserRelicQueueState.DefaultState;
-        
 
-        hubConnection.On<List<RelicQueueItem>>("ReceiveRelicQueue", (relics) =>
+
+        hubConnection.On<List<RelicQueueDisplay>>("ReceiveRelicQueue", (relics) =>
         {
             currentQueue = relics;
             StateHasChanged();

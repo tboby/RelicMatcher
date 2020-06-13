@@ -13,18 +13,29 @@ namespace RelicMatcher.Shared
         public string DisplayName { get; set; }
         public bool Accepted { get; set; }
     }
-    public enum RelicType {
-        A1,
-        A2,
-        A3,
-        A4
+
+    public class RelicType
+    {
+        public string UniqueName { get; set; }
+        public string BaseName { get; set; }
+        public bool Vaulted { get; set; }
+        public string DisplayName => Vaulted ? $"{BaseName} (Vaulted)" : BaseName;
     }
-    public class RelicQueueItem
+
+    public class RelicQueueDisplay
     {
         [Required]
         public string User { get; set; }
         [Required]
-        public RelicType RelicType { get; set; }
+        public string RelicDisplayName { get; set; }
+    }
+
+    public class RelicQueueInput
+    {
+        [Required]
+        public string User { get; set; }
+        [Required]
+        public string RelicUniqueName { get; set; }
     }
 
     public class Party

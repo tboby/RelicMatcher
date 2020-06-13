@@ -34,6 +34,7 @@ namespace RelicMatcher.Server
             services.AddRazorPages();
             services.AddSingleton<TicketService>();
             services.AddSingleton<ConnectionSessionService>();
+            services.AddSingleton<RelicListService>();
             services.AddLogging(logging => { logging.AddConsole(); });
             services.AddSignalR();
         }

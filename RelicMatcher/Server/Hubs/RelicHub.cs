@@ -16,14 +16,16 @@ namespace RelicMatcher.Server.Hubs
         private readonly TicketService _ticketService;
         private readonly ConnectionSessionService _connectionSessionService;
         private readonly ILogger<RelicHub> _logger;
-        private IEnumerable<RelicQueueItem> QueueList => _ticketService.GetIndexedTickets().Select(x => new RelicQueueItem(){RelicType = x.RelicType, User = x.DisplayName});
+        private readonly RelicListService _relicListService;
+        private IEnumerable<RelicQueueDisplay> QueueList => _ticketService.GetIndexedTickets().Select(x => new RelicQueueDisplay(){RelicDisplayName = x.RelicType.DisplayName, User = x.DisplayName});
         private IEnumerable<Ticket> CurrentQueue => _ticketService.GetIndexedTickets();
 
         //private int 
-        public RelicHub(TicketService ticketService, ILogger<RelicHub> logger, ConnectionSessionService connectionSessionService)
+        public RelicHub(TicketService ticketService, ILogger<RelicHub> logger, ConnectionSessionService connectionSessionService, RelicListService relicListService)
         {
             _ticketService = ticketService;
             _connectionSessionService = connectionSessionService;
+            _relicListService = relicListService;
             _logger = logger;
         }
 
@@ -43,9 +45,9 @@ namespace RelicMatcher.Server.Hubs
             await UpdateClients();
 
         }
-        public async Task QueueRelic(RelicQueueItem item)
+        public async Task QueueRelic(RelicQueueInput item)
         {
-            _ticketService.CreateTicket(UserGuid, item.User, item.RelicType);
+            _ticketService.CreateTicket(UserGuid, item.User, _relicListService.GetRelicFromUniqueName(item.RelicUniqueName));
             await CheckForGroups();
             await RefreshClient(UserGuid);
             await UpdateClients();
