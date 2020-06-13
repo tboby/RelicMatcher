@@ -9,7 +9,7 @@ namespace RelicMatcher.Shared
 {
     public class UserWrapper
     {
-        public string ConnectionID { get; set; }
+        public Guid UserGuid { get; set; }
         public string DisplayName { get; set; }
         public bool Accepted { get; set; }
     }

@@ -15,28 +15,28 @@ namespace RelicMatcher.Server.Service
         {
             _logger = logger;
         }
-        private Dictionary<string, Ticket> Tickets { get; set; } = new Dictionary<string, Ticket>();
+        private Dictionary<Guid, Ticket> Tickets { get; set; } = new Dictionary<Guid, Ticket>();
         //private HashSet<Ticket> Index { get; set; } = new HashSet<Ticket>();
 
-        public Ticket CreateTicket(string connectionId, string displayName, RelicType relicType)
+        public Ticket CreateTicket(Guid userGuid, string displayName, RelicType relicType)
         {
-            var ticket = new Ticket(connectionId, displayName, relicType);
-            Tickets[connectionId] = ticket;
+            var ticket = new Ticket(userGuid, displayName, relicType);
+            Tickets[userGuid] = ticket;
             return ticket;
         }
 
-        public Ticket? GetTicket(string connectionID)
+        public Ticket? GetTicket(Guid userGuid)
         {
             _logger.LogDebug(Tickets.Keys.ToString());
-            return Tickets.GetValueOrDefault(connectionID);
+            return Tickets.GetValueOrDefault(userGuid);
         }
 
-        public void DeleteTicket(string connectionID)
+        public void DeleteTicket(Guid userGuid)
         {
-            if (Tickets.TryGetValue(connectionID, out var ticket))
+            if (Tickets.TryGetValue(userGuid, out var ticket))
             {
                 ticket.Assignment?.Members.Remove(ticket);
-                Tickets.Remove(connectionID);
+                Tickets.Remove(userGuid);
             }
         }
 
@@ -51,9 +51,13 @@ namespace RelicMatcher.Server.Service
 
         public IReadOnlyCollection<Ticket> GetIndexedTickets()
         {
-            return Tickets.Values.Where(x => x.Assignment == null).ToImmutableList();
+            return Tickets.Values.Where(x => x.Assignment == null && x.Active).ToImmutableList();
         }
 
+        public void SetTicketActiveState(Ticket ticket, bool active)
+        {
+            ticket.Active = active;
+        }
         public Assignment CreateAssignment(ICollection<Ticket> tickets, RelicType relicType)
         {
             var assignment = new Assignment(relicType, tickets.ToList());

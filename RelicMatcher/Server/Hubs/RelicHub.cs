@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using RelicMatcher.Client;
 using RelicMatcher.Client.Pages;
 using RelicMatcher.Server.Service;
@@ -13,61 +14,84 @@ namespace RelicMatcher.Server.Hubs
     public class RelicHub : Hub
     {
         private readonly TicketService _ticketService;
-        private IEnumerable<RelicQueueItem> QueueList => _ticketService.GetTickets().Where(x => x.Assignment == null).Select(x => new RelicQueueItem(){RelicType = x.RelicType, User = x.DisplayName});
-        private IEnumerable<Ticket> CurrentQueue => _ticketService.GetTickets().Where(x => x.Assignment == null);
-        public RelicHub(TicketService ticketService)
+        private readonly ConnectionSessionService _connectionSessionService;
+        private readonly ILogger<RelicHub> _logger;
+        private IEnumerable<RelicQueueItem> QueueList => _ticketService.GetIndexedTickets().Select(x => new RelicQueueItem(){RelicType = x.RelicType, User = x.DisplayName});
+        private IEnumerable<Ticket> CurrentQueue => _ticketService.GetIndexedTickets();
+
+        //private int 
+        public RelicHub(TicketService ticketService, ILogger<RelicHub> logger, ConnectionSessionService connectionSessionService)
         {
             _ticketService = ticketService;
+            _connectionSessionService = connectionSessionService;
+            _logger = logger;
         }
 
         public static int PartySize = 2;
+
+        private Guid UserGuid => _connectionSessionService.GetUserForConnection(Context.ConnectionId);
+
+        public async Task ConnectUser(Guid sessionUserGuid)
+        {
+            _connectionSessionService.SetUserForConnection(Context.ConnectionId, sessionUserGuid);
+            var ticket = _ticketService.GetTicket(sessionUserGuid);
+            if (ticket != null)
+            {
+                _ticketService.SetTicketActiveState(ticket, true);
+            }
+            await RefreshClient(UserGuid);
+            await UpdateClients();
+
+        }
         public async Task QueueRelic(RelicQueueItem item)
         {
-            _ticketService.CreateTicket(Context.ConnectionId, item.User, item.RelicType);
+            _ticketService.CreateTicket(UserGuid, item.User, item.RelicType);
             await CheckForGroups();
-            await RefreshClient(Context.ConnectionId);
+            await RefreshClient(UserGuid);
             await UpdateClients();
         }
 
         public async Task DeQueueRelic()
         {
-            _ticketService.DeleteTicket(Context.ConnectionId);
-            await RefreshClient(Context.ConnectionId);
+            _ticketService.DeleteTicket(UserGuid);
+            await RefreshClient(UserGuid);
             await UpdateClients();
         }
 
         public async Task AcceptAssignment()
         {
-            var ticket = _ticketService.GetTicket(Context.ConnectionId);
+            var ticket = _ticketService.GetTicket(UserGuid);
             ticket.Accepted = true;
             CheckAssignment(ticket.Assignment);
-            await RefreshClient(Context.ConnectionId);
+            await RefreshClient(UserGuid);
             await UpdateParty(ticket.Assignment);
 
         }
 
         public async Task Reset()
         {
-            _ticketService.DeleteTicket(Context.ConnectionId);
-            await RefreshClient(Context.ConnectionId);
+            _ticketService.DeleteTicket(UserGuid);
+            await RefreshClient(UserGuid);
             await Clients.Caller.SendAsync("ReceiveRelicQueue", QueueList);
         }
         public override async Task OnConnectedAsync()
         {
-            await RefreshClient(Context.ConnectionId);
-            await Clients.Caller.SendAsync("ReceiveRelicQueue", QueueList);
+            //await RefreshClient(Context.ConnectionId);
+            //await Clients.Caller.SendAsync("ReceiveRelicQueue", QueueList);
             await base.OnConnectedAsync();
         }
 
-        private async Task RefreshClient(string connectionId)
+        private async Task RefreshClient(Guid userGuid)
         {
-            var ticket = _ticketService.GetTicket(connectionId);
+            //var userGuid = _connectionSessionService.GetUserForConnection(connectionId);
+            var connectionIDs = _connectionSessionService.GetAllConnectionsForUser(userGuid);
+            var ticket = _ticketService.GetTicket(userGuid);
 
             if (ticket == null)
             {
                 var queueStatus = RelicQueueStatus.None;
                 UserRelicQueueState userState = new UserRelicQueueState(queueStatus, null, null);
-                await Clients.Client(connectionId).SendAsync("ReceiveUserState", userState);
+                await Clients.Clients(connectionIDs).SendAsync("ReceiveUserState", userState);
             }
             else if (ticket.Assignment != null)
             {
@@ -79,18 +103,18 @@ namespace RelicMatcher.Server.Hubs
                     Members = ticket.Assignment.Members.Select(x => new UserWrapper()
                     {
                         Accepted = x.Accepted,
-                        ConnectionID = x.ConnectionId,
+                        UserGuid = x.UserGuid,
                         DisplayName = x.DisplayName
                     })
                 };
                 UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, party);
-                await Clients.Client(connectionId).SendAsync("ReceiveUserState", userState);
+                await Clients.Clients(connectionIDs).SendAsync("ReceiveUserState", userState);
             }
             else
             {
                 var queueStatus = RelicQueueStatus.Queued;
                 UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, null);
-                await Clients.Client(connectionId).SendAsync("ReceiveUserState", userState);
+                await Clients.Clients(connectionIDs).SendAsync("ReceiveUserState", userState);
             }
             //var userState = new UserRelicQueueState();
         }
@@ -112,7 +136,7 @@ namespace RelicMatcher.Server.Hubs
                 _ticketService.CreateAssignment(members, group.Key);
                 foreach(var member in members)
                 {
-                    await RefreshClient(member.ConnectionId);
+                    await RefreshClient(member.UserGuid);
                 }
                 //var userWrappers = members.Select(x => new UserWrapper()
                 //    {ConnectionID = x.ConnectionId, DisplayName = x.DisplayName});
@@ -125,7 +149,7 @@ namespace RelicMatcher.Server.Hubs
         {
             foreach (var member in assignment.Members)
             {
-                await RefreshClient(member.ConnectionId);
+                await RefreshClient(member.UserGuid);
             }
         }
 
@@ -139,7 +163,11 @@ namespace RelicMatcher.Server.Hubs
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
-            _ticketService.DeleteTicket(Context.ConnectionId);
+            var ticket = _ticketService.GetTicket(UserGuid);
+            if (ticket != null)
+            {
+                _ticketService.SetTicketActiveState(ticket, false);
+            }
             await UpdateClients();
             await base.OnDisconnectedAsync(exception);
         }

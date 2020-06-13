@@ -1,19 +1,22 @@
-﻿using RelicMatcher.Shared;
+﻿using System;
+using RelicMatcher.Shared;
 
 namespace RelicMatcher.Server.Service
 {
     public class Ticket
     {
-        public Ticket(string connectionId, string displayName, RelicType relicType)
+        public Ticket(Guid userGuid, string displayName, RelicType relicType)
         {
-            ConnectionId = connectionId;
+            UserGuid = userGuid;
             DisplayName = displayName;
             RelicType = relicType;
+            Active = true;
         }
 
-        public string ConnectionId { get; set; }
+        public Guid UserGuid { get; set; }
         public string DisplayName { get; set; }
         public RelicType RelicType { get; set; }
+        public bool Active { get; set; }
         public Assignment? Assignment { get; set; }
         public bool Accepted { get; set; }
     }

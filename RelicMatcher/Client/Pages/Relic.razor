@@ -1,10 +1,12 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using System.Diagnostics
+@using BlazorBrowserStorage
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.Extensions.Logging
 @using RelicMatcher.Shared
 @inject NavigationManager NavigationManager
 @inject ILoggerProvider LoggerProvider
+@inject ISessionStorage sessionStorage
 @implements IDisposable
 @page "/relic"
 <h1>Relic</h1>
@@ -15,7 +17,11 @@
     {
         <p>Currently queued for relic: @QueuedRelic</p>
     }
-    else
+    else if (IsConnected == false)
+    {
+        <p>Disconnected</p>
+    }
+    else if(RelicQueueStatus == RelicQueueStatus.None)
     {
         <p>Not queued</p>
     }
@@ -60,6 +66,7 @@ else if (RelicQueueStatus == RelicQueueStatus.PartyFound)
     </ul>
     <button @onclick="Accept" disabled="@(!IsConnected)">Accept</button>
 
+
 }
 else if (RelicQueueStatus == RelicQueueStatus.Done)
 {
@@ -77,7 +84,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
 
 @code {
-    private UserRelicQueueState UserRelicQueueState { get; set; }
+    private UserRelicQueueState UserRelicQueueState { get; set; } = UserRelicQueueState.DefaultState;
     private RelicQueueStatus RelicQueueStatus => UserRelicQueueState.RelicQueueStatus;
     private RelicType? QueuedRelic => UserRelicQueueState.RelicType;
     private Party? CurrentParty => UserRelicQueueState.Party;
@@ -93,22 +100,25 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
     protected override async Task OnInitializedAsync()
     {
-        UserRelicQueueState = UserRelicQueueState.DefaultState;
-        ;
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"))
+            .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"), opts => {})
+
             .ConfigureLogging(logging => logging.AddProvider(LoggerProvider))
-            //.ConfigureLogging(logging =>
-            //{
-            //// Log to the Console
-            //logging.AddConsole();
-
-            //// This will set ALL logging to Debug level
-            //logging.SetMinimumLevel(LogLevel.Debug);
-
-
-            //})
             .Build();
+
+        var key = "userSession";
+        Guid userGuid = Guid.NewGuid();
+        try
+        {
+            userGuid = await sessionStorage.GetItem<Guid>(key);
+        }
+        catch(ArgumentNullException)
+        {
+            await sessionStorage.SetItem<Guid>(key, userGuid);
+        }
+
+        UserRelicQueueState = UserRelicQueueState.DefaultState;
+        
 
         hubConnection.On<List<RelicQueueItem>>("ReceiveRelicQueue", (relics) =>
         {
@@ -124,8 +134,14 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         });
         Debug.WriteLine("test1");
 
+
         await hubConnection.StartAsync();
+        await ConnectUser(userGuid);
+
     }
+
+    Task ConnectUser(Guid sessionUser) =>
+        hubConnection.SendAsync("ConnectUser", sessionUser);
 
     Task Queue() =>
         hubConnection.SendAsync("QueueRelic", model);
