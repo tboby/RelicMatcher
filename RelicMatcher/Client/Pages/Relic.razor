@@ -30,11 +30,16 @@
         <DataAnnotationsValidator />
         <ValidationSummary />
 
+        <label>
+            Include Vaulted relics:
+            <input type="checkbox" @bind="IncludeVaultedRelics" />
+        </label>
+
         <InputSelect @bind-Value="model.RelicUniqueName">
-            @foreach (var cnt in Relics)
-            {
+            @foreach (var cnt in FilteredRelics)
+                {
                 <option value="@cnt.UniqueName">@cnt.DisplayName</option>
-            }
+                }
         </InputSelect>
 
         <InputText @bind-Value="model.User" />
@@ -92,9 +97,11 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
     //private RelicQueueState RelicQueueState { get; set; } = RelicQueueState.None;
     private RelicQueueInput model { get; set; } = new RelicQueueInput();
     private IEnumerable<RelicType> Relics { get; set; } = new List<RelicType>();
+    private IEnumerable<RelicType> FilteredRelics => Relics.Where(x => IncludeVaultedRelics || !x.Vaulted);
 
     private HubConnection hubConnection;
     private List<RelicQueueDisplay> currentQueue = new List<RelicQueueDisplay>();
+    private bool IncludeVaultedRelics = false;
 
     //private Party currentParty;
     //private RelicType queuedRelic { get; set; }
