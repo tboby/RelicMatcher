@@ -44,6 +44,7 @@ namespace RelicMatcher.Shared
         public RelicType RelicType { get; set; }
         public IEnumerable<UserWrapper> Members { get; set; }
         public bool Done { get; set; }
+        public DateTime DeadLine { get; set; }
     }
 
 

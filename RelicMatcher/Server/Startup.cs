@@ -35,8 +35,11 @@ namespace RelicMatcher.Server
             services.AddSingleton<TicketService>();
             services.AddSingleton<ConnectionSessionService>();
             services.AddSingleton<RelicListService>();
+            services.AddScoped<RelicHubResponseService>();
+            services.AddScoped<TicketBackgroundService>();
             services.AddLogging(logging => { logging.AddConsole(); });
             services.AddSignalR();
+            services.AddHostedService<TimedHostedService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -11,25 +11,26 @@ using RelicMatcher.Shared;
 
 namespace RelicMatcher.Server.Hubs
 {
-    public class RelicHub : Hub
+    public class RelicHub : Hub<IRelicHub>
     {
         private readonly TicketService _ticketService;
         private readonly ConnectionSessionService _connectionSessionService;
         private readonly ILogger<RelicHub> _logger;
         private readonly RelicListService _relicListService;
+        private readonly RelicHubResponseService _relicHubResponseService;
         private IEnumerable<RelicQueueDisplay> QueueList => _ticketService.GetIndexedTickets().Select(x => new RelicQueueDisplay(){RelicDisplayName = x.RelicType.DisplayName, User = x.DisplayName});
         private IEnumerable<Ticket> CurrentQueue => _ticketService.GetIndexedTickets();
 
         //private int 
-        public RelicHub(TicketService ticketService, ILogger<RelicHub> logger, ConnectionSessionService connectionSessionService, RelicListService relicListService)
+        public RelicHub(TicketService ticketService, ILogger<RelicHub> logger, ConnectionSessionService connectionSessionService, RelicListService relicListService, RelicHubResponseService relicHubResponseService)
         {
             _ticketService = ticketService;
             _connectionSessionService = connectionSessionService;
             _relicListService = relicListService;
+            _relicHubResponseService = relicHubResponseService;
             _logger = logger;
         }
 
-        public static int PartySize = 2;
 
         private Guid UserGuid => _connectionSessionService.GetUserForConnection(Context.ConnectionId);
 
@@ -41,22 +42,22 @@ namespace RelicMatcher.Server.Hubs
             {
                 _ticketService.SetTicketActiveState(ticket, true);
             }
-            await RefreshClient(UserGuid);
+
+            await _relicHubResponseService.RefreshClients(UserGuid);
             await UpdateClients();
 
         }
         public async Task QueueRelic(RelicQueueInput item)
         {
             _ticketService.CreateTicket(UserGuid, item.User, _relicListService.GetRelicFromUniqueName(item.RelicUniqueName));
-            await CheckForGroups();
-            await RefreshClient(UserGuid);
+            await _relicHubResponseService.RefreshClients(UserGuid);
             await UpdateClients();
         }
 
         public async Task DeQueueRelic()
         {
             _ticketService.DeleteTicket(UserGuid);
-            await RefreshClient(UserGuid);
+            await _relicHubResponseService.RefreshClients(UserGuid);
             await UpdateClients();
         }
 
@@ -65,7 +66,7 @@ namespace RelicMatcher.Server.Hubs
             var ticket = _ticketService.GetTicket(UserGuid);
             ticket.Accepted = true;
             CheckAssignment(ticket.Assignment);
-            await RefreshClient(UserGuid);
+            await _relicHubResponseService.RefreshClients(UserGuid);
             await UpdateParty(ticket.Assignment);
 
         }
@@ -73,8 +74,8 @@ namespace RelicMatcher.Server.Hubs
         public async Task Reset()
         {
             _ticketService.DeleteTicket(UserGuid);
-            await RefreshClient(UserGuid);
-            await Clients.Caller.SendAsync("ReceiveRelicQueue", QueueList);
+            await _relicHubResponseService.RefreshClients(UserGuid);
+            await Clients.Caller.ReceiveRelicQueue(QueueList);
         }
         public override async Task OnConnectedAsync()
         {
@@ -83,75 +84,18 @@ namespace RelicMatcher.Server.Hubs
             await base.OnConnectedAsync();
         }
 
-        private async Task RefreshClient(Guid userGuid)
-        {
-            //var userGuid = _connectionSessionService.GetUserForConnection(connectionId);
-            var connectionIDs = _connectionSessionService.GetAllConnectionsForUser(userGuid);
-            var ticket = _ticketService.GetTicket(userGuid);
-
-            if (ticket == null)
-            {
-                var queueStatus = RelicQueueStatus.None;
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, null, null);
-                await Clients.Clients(connectionIDs).SendAsync("ReceiveUserState", userState);
-            }
-            else if (ticket.Assignment != null)
-            {
-                var queueStatus = ticket.Assignment.Done ? RelicQueueStatus.Done : RelicQueueStatus.PartyFound;
-                var party = new Party()
-                {
-                    Done = ticket.Assignment.Done,
-                    RelicType = ticket.Assignment.RelicType,
-                    Members = ticket.Assignment.Members.Select(x => new UserWrapper()
-                    {
-                        Accepted = x.Accepted,
-                        UserGuid = x.UserGuid,
-                        DisplayName = x.DisplayName
-                    })
-                };
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, party);
-                await Clients.Clients(connectionIDs).SendAsync("ReceiveUserState", userState);
-            }
-            else
-            {
-                var queueStatus = RelicQueueStatus.Queued;
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, null);
-                await Clients.Clients(connectionIDs).SendAsync("ReceiveUserState", userState);
-            }
-            //var userState = new UserRelicQueueState();
-        }
 
         private async Task UpdateClients()
         {
-            await Clients.All.SendAsync("ReceiveRelicQueue", QueueList);
+            await Clients.All.ReceiveRelicQueue(QueueList);
         }
 
-        private async Task CheckForGroups()
-        {
-            var groups =
-                CurrentQueue
-                    .GroupBy(x => x.RelicType)
-                    .Where(x => x.Count() >= PartySize);
-            foreach (var group in groups)
-            {
-                var members = group.Take(PartySize).ToList();
-                _ticketService.CreateAssignment(members, group.Key);
-                foreach(var member in members)
-                {
-                    await RefreshClient(member.UserGuid);
-                }
-                //var userWrappers = members.Select(x => new UserWrapper()
-                //    {ConnectionID = x.ConnectionId, DisplayName = x.DisplayName});
-                //await Clients.Clients(members.Select(x => x.ConnectionId).ToList())
-                //    .SendAsync("ReceivePartyFound", new Party(){Members = userWrappers, RelicType = group.Key});
-            }
-        }
 
         private async Task UpdateParty(Assignment assignment)
         {
             foreach (var member in assignment.Members)
             {
-                await RefreshClient(member.UserGuid);
+                await _relicHubResponseService.RefreshClients(member.UserGuid);
             }
         }
 

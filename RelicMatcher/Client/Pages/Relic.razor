@@ -1,5 +1,6 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using System.Diagnostics
+@using System.Timers
 @using BlazorBrowserStorage
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.Extensions.Logging
@@ -62,7 +63,8 @@
 else if (RelicQueueStatus == RelicQueueStatus.PartyFound)
 {
     <h3>Party found!</h3>
-    <p>Relic: @CurrentParty.RelicType</p>
+    <p>Relic: @CurrentParty.RelicType.DisplayName</p>
+    @TimeRemaining.Seconds
     <h4>Members:</h4>
     <ul>
         @foreach (var member in CurrentParty.Members)
@@ -103,6 +105,8 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
     private List<RelicQueueDisplay> currentQueue = new List<RelicQueueDisplay>();
     private bool IncludeVaultedRelics = false;
 
+    private TimeSpan TimeRemaining => CurrentParty.DeadLine - DateTime.Now;
+
     //private Party currentParty;
     //private RelicType queuedRelic { get; set; }
 
@@ -139,11 +143,12 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         hubConnection.On<UserRelicQueueState>("ReceiveUserState", (userState) =>
         {
             UserRelicQueueState = userState;
-            LoggerProvider.CreateLogger("Test").LogInformation(userState.RelicQueueStatus.ToString());
+            SetupTimer();
             StateHasChanged();
         });
-        Debug.WriteLine("test1");
 
+        DeadlineTimer.Interval = 1000;
+        DeadlineTimer.Elapsed += OnTimedEvent;
 
         await hubConnection.StartAsync();
         await ConnectUser(userGuid);
@@ -167,6 +172,25 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
     public bool IsConnected =>
         hubConnection.State == HubConnectionState.Connected;
+
+    private readonly Timer DeadlineTimer = new Timer();
+
+    private void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    public void SetupTimer()
+    {
+        if (RelicQueueStatus == RelicQueueStatus.PartyFound)
+        {
+            DeadlineTimer.Start();
+        }
+        else
+        {
+            DeadlineTimer.Stop();
+        }
+    }
 
     public void Dispose()
     {

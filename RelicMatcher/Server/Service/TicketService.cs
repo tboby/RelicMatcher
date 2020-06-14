@@ -60,7 +60,7 @@ namespace RelicMatcher.Server.Service
         }
         public Assignment CreateAssignment(ICollection<Ticket> tickets, RelicType relicType)
         {
-            var assignment = new Assignment(relicType, tickets.ToList());
+            var assignment = new Assignment(relicType, tickets.ToList(), DateTime.Now.AddSeconds(30));
             foreach (var ticket in tickets)
             {
                 ticket.Assignment = assignment;
