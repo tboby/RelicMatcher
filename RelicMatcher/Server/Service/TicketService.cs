@@ -70,6 +70,11 @@ namespace RelicMatcher.Server.Service
             return assignment;
         }
 
+        public IReadOnlyCollection<Assignment> GetAssignments()
+        {
+            return Tickets.Values.Select(x => x.Assignment).Distinct().Where(x => x != null).ToImmutableList();
+        }
+
 
     }
 }

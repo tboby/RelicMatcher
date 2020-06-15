@@ -79,5 +79,18 @@ namespace RelicMatcher.Server.Hubs
                 }
             }
         }
+
+        public async Task ExpireGroups()
+        {
+            var assignments = _ticketService.GetAssignments();
+            foreach (var assignment in assignments.Where(x => x.DeadLine.AddSeconds(2) < DateTime.Now))
+            {
+                foreach (var member in assignment.Members)
+                {
+                    member.Active = member.Accepted;
+                    member.Assignment = null;
+                }
+            }
+        }
     }
 }

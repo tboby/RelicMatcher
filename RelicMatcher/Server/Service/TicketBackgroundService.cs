@@ -19,6 +19,7 @@ namespace RelicMatcher.Server.Service
         public async Task BackgroundChecks()
         {
             await _relicHubResponseService.CheckForGroups();
+            await _relicHubResponseService.ExpireGroups();
         }
     }
 }
