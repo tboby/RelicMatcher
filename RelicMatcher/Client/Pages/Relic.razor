@@ -4,11 +4,12 @@
 @using BlazorBrowserStorage
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.Extensions.Logging
+@using RelicMatcher.Client.ViewModels
 @using RelicMatcher.Shared
 @inject NavigationManager NavigationManager
 @inject ILoggerProvider LoggerProvider
 @inject ILogger<Relic> Logger
-@inject ILocalStorage localStorage
+@inject UserStateService UserStateService
 @inject HttpClient Http
 @implements IDisposable
 @page "/relic"
@@ -133,6 +134,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
     private TimeSpan TimeRemaining => CurrentParty.DeadLine - DateTime.Now;
 
     private bool Initialized = false;
+    private UserSettings UserSettings { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -141,22 +143,16 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
             .ConfigureLogging(logging => logging.AddProvider(LoggerProvider))
             .Build();
+        UserSettings = await UserStateService.GetUserSettings();
+        if (UserSettings == null)
+        {
+            NavigationManager.NavigateTo("/settings/firstTime", true);
+        }
 
         UserRelicQueueState = UserRelicQueueState.DefaultState;
         Relics = await Http.GetFromJsonAsync<List<RelicType>>("api/RelicData");
 
-        var key = "userSession";
-        Guid userGuid = Guid.NewGuid();
-        try
-        {
-            userGuid = await localStorage.GetItem<Guid>(key);
-        }
-        catch (ArgumentNullException)
-        {
-            await localStorage.SetItem<Guid>(key, userGuid);
-        }
-
-
+        var userGuid = await UserStateService.GetOrCreateUserSession();
 
         hubConnection.On<List<RelicQueueDisplay>>("ReceiveRelicQueue", (relics) =>
         {
@@ -168,8 +164,8 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         {
             if (!Initialized)
             {
-                model.UserDisplayName ??= userState.UserDisplayName;
-                model.RelicUniqueName ??= userState.RelicType.UniqueName;
+                model.UserDisplayName ??= userState?.UserDisplayName;
+                model.RelicUniqueName ??= userState?.RelicType?.UniqueName;
                 Initialized = true;
             }
             UserRelicQueueState = userState;

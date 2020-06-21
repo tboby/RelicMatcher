@@ -19,6 +19,7 @@ namespace RelicMatcher.Client
             builder.RootComponents.Add<App>("app");
             builder.Services.AddTransient(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             builder.Services.AddBlazorBrowserStorage();
+            builder.Services.AddTransient<UserStateService>();
             await builder.Build().RunAsync();
         }
     }

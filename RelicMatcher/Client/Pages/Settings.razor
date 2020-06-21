@@ -8,10 +8,17 @@
 @using RelicMatcher.Shared
 @inject NavigationManager NavigationManager
 @inject ILogger<Settings> Logger
-@inject ILocalStorage localStorage
+@inject UserStateService UserStateService
 @inject HttpClient Http
 @page "/settings"
+@page "/settings/{hint}"
 <h3>Settings</h3>
+@if (FirstTime)
+{
+    <div class="alert alert-primary" role="alert">
+        Please complete these details before queuing.
+    </div>
+}
 <EditForm Model="UserSettingsModel" OnValidSubmit="SaveSettings">
     <DataAnnotationsValidator />
     <ValidationSummary />
@@ -66,7 +73,17 @@
             </div>
         }
     </div>
-    <button type="submit">Save settings</button>
+
+    <button type="submit">
+        @if (FirstTime)
+        {
+            @:Save and return
+        }
+        else
+        {
+            @:Save settings
+        }
+    </button>
     @if (Saved)
     {
         @:Saved!
@@ -77,22 +94,24 @@
     private UserSettings UserSettingsModel { get; set; } = new UserSettings();
     private bool Saved { get; set; } = false;
 
+    [Parameter]
+    public string Hint { get; set; }
+
+    private bool FirstTime => Hint == "firstTime";
+
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            var key = "userSettings";
-            UserSettingsModel = await localStorage.GetItem<UserSettings>(key);
-        }
-        catch (ArgumentNullException)
-        {
-        }
+        UserSettingsModel = await UserStateService.GetUserSettings() ?? UserSettingsModel;
     }
 
-    private void SaveSettings()
+    private async Task SaveSettings()
     {
-        localStorage.SetItem<UserSettings>("userSettings", UserSettingsModel);
+        await UserStateService.SaveUserSettings(UserSettingsModel);
         Saved = true;
+        if (FirstTime)
+        {
+            NavigationManager.NavigateTo("/relic");
+        }
         StateHasChanged();
     }
 
