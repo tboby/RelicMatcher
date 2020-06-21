@@ -30,20 +30,34 @@
     <EditForm Model="model" OnValidSubmit="Queue">
         <DataAnnotationsValidator />
         <ValidationSummary />
+        <div class="form-group">
+            <label>
+                Name:
+                <InputText @bind-Value="model.User" />
+            </label>
+        </div>
 
-        <label>
-            Include Vaulted relics:
-            <input type="checkbox" @bind="IncludeVaultedRelics" />
-        </label>
+        <div class="form-group">
 
-        <InputSelect @bind-Value="model.RelicUniqueName">
-            @foreach (var cnt in FilteredRelics)
+        <label>Relic:
+            <InputSelect @bind-Value="model.RelicUniqueName" placeholder="Select relic">
+                <option value="">Select relic</option>
+                @foreach (var cnt in FilteredRelics)
                 {
-                <option value="@cnt.UniqueName">@cnt.DisplayName</option>
+                    <option value="@cnt.UniqueName">@cnt.DisplayName</option>
                 }
-        </InputSelect>
+            </InputSelect>
+            <label>
+                Include Vaulted relics:
+                <input type="checkbox" @bind="IncludeVaultedRelics" />
+            </label>
 
-        <InputText @bind-Value="model.User" />
+        </label>
+        </div>
+        <div class="form-group">
+        </div>
+  
+
 
         <button type="submit" disabled="@(!IsConnected)">Queue</button>
         @if (RelicQueueStatus == RelicQueueStatus.Queued)
