@@ -14,11 +14,17 @@ namespace RelicMatcher.Shared
         public bool Accepted { get; set; }
     }
 
+    public class RelicDrop
+    {
+        public string Name { get; set; }
+        public string Rarity { get; set; }
+    }
     public class RelicType
     {
         public string UniqueName { get; set; }
         public string BaseName { get; set; }
         public bool Vaulted { get; set; }
+        public List<RelicDrop> Drops { get; set; }
         public string DisplayName => Vaulted ? $"{BaseName} (Vaulted)" : BaseName;
     }
 

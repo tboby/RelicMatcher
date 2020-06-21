@@ -39,21 +39,31 @@
 
         <div class="form-group">
 
-        <label>Relic:
-            <InputSelect @bind-Value="model.RelicUniqueName" placeholder="Select relic">
-                <option value="">Select relic</option>
-                @foreach (var cnt in FilteredRelics)
-                {
-                    <option value="@cnt.UniqueName">@cnt.DisplayName</option>
-                }
-            </InputSelect>
-            <label>
-                Include Vaulted relics:
-                <input type="checkbox" @bind="IncludeVaultedRelics" />
-            </label>
+            <label>Relic:
+                <InputSelect @bind-Value="model.RelicUniqueName" placeholder="Select relic">
+                    <option value="">Select relic</option>
+                    @foreach (var cnt in FilteredRelics)
+                    {
+                        <option value="@cnt.UniqueName">@cnt.DisplayName</option>
+                    }
+                </InputSelect>
+                <label>
+                    Include Vaulted relics:
+                    <input type="checkbox" @bind="IncludeVaultedRelics" />
+                </label>
 
-        </label>
+            </label>
         </div>
+        @if (SelectedRelic != null)
+        {
+            <dl>
+                @foreach (var reward in SelectedRelic.Drops)
+                {
+                    <dt>@reward.Rarity</dt>
+                    <dd>@reward.Name</dd>
+                }
+            </dl>
+        }
         <div class="form-group">
         </div>
   
@@ -114,6 +124,8 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
     private RelicQueueInput model { get; set; } = new RelicQueueInput();
     private IEnumerable<RelicType> Relics { get; set; } = new List<RelicType>();
     private IEnumerable<RelicType> FilteredRelics => Relics.Where(x => IncludeVaultedRelics || !x.Vaulted);
+
+    private RelicType? SelectedRelic => Relics.FirstOrDefault(x => x.UniqueName == model.RelicUniqueName);
 
     private HubConnection hubConnection;
     private List<RelicQueueDisplay> currentQueue = new List<RelicQueueDisplay>();
