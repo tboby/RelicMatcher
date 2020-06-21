@@ -1,0 +1,99 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.Diagnostics
+@using System.Timers
+@using BlazorBrowserStorage
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Logging
+@using RelicMatcher.Client.ViewModels
+@using RelicMatcher.Shared
+@inject NavigationManager NavigationManager
+@inject ILogger<Settings> Logger
+@inject ILocalStorage localStorage
+@inject HttpClient Http
+@page "/settings"
+<h3>Settings</h3>
+<EditForm Model="UserSettingsModel" OnValidSubmit="SaveSettings">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="form-group">
+        <label>
+            Nickname:
+            <InputText @bind-Value="UserSettingsModel.DisplayName" />
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label>
+            Platform:
+            <CustomInputSelect @bind-Value="UserSettingsModel.Platform">
+                <option value="">Select platform</option>
+                @foreach (var platform in Enum.GetValues(typeof(Platform)).Cast<Platform>())
+                {
+                    <option value="@platform">@Enum.GetName(typeof(Platform), platform)</option>
+                }
+            </CustomInputSelect>
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label>
+            Preferred region:
+            <CustomInputSelect @bind-Value="UserSettingsModel.PreferredRegion">
+                <option value="">Select region</option>
+                @foreach (var region in Enum.GetValues(typeof(Region)).Cast<Region>())
+                {
+                    <option value="@region">@Enum.GetName(typeof(Region), region)</option>
+                }
+            </CustomInputSelect>
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label>
+            Host preference:
+            <CustomInputSelect @bind-Value="UserSettingsModel.HostPreference">
+                <option value="">Select preference</option>
+                @foreach (var host in Enum.GetValues(typeof(HostPreference)).Cast<HostPreference>())
+                {
+                    <option value="@host">@Enum.GetName(typeof(HostPreference), host)</option>
+                }
+            </CustomInputSelect>
+        </label>
+        @if (UserSettingsModel.HostPreference == HostPreference.CannotHost)
+        {
+            <div>
+                "Cannot Host" may increase queue time. A group will not be created until at least one player queues who can host.
+            </div>
+        }
+    </div>
+    <button type="submit">Save settings</button>
+    @if (Saved)
+    {
+        @:Saved!
+    }
+</EditForm>
+
+@code {
+    private UserSettings UserSettingsModel { get; set; } = new UserSettings();
+    private bool Saved { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var key = "userSettings";
+            UserSettingsModel = await localStorage.GetItem<UserSettings>(key);
+        }
+        catch (ArgumentNullException)
+        {
+        }
+    }
+
+    private void SaveSettings()
+    {
+        localStorage.SetItem<UserSettings>("userSettings", UserSettingsModel);
+        Saved = true;
+        StateHasChanged();
+    }
+
+}
