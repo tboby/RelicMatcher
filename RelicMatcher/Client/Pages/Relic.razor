@@ -7,7 +7,8 @@
 @using RelicMatcher.Shared
 @inject NavigationManager NavigationManager
 @inject ILoggerProvider LoggerProvider
-@inject ISessionStorage sessionStorage
+@inject ILogger<Relic> Logger
+@inject ILocalStorage localStorage
 @inject HttpClient Http
 @implements IDisposable
 @page "/relic"
@@ -17,101 +18,98 @@
 {
     if (RelicQueueStatus == RelicQueueStatus.Queued)
     {
-        <p>Currently queued for relic: @QueuedRelic.DisplayName</p>
+<p>Currently queued for relic: @QueuedRelic.DisplayName</p>
     }
     else if (IsConnected == false)
     {
-        <p>Disconnected</p>
+<p>Disconnected</p>
     }
     else if (RelicQueueStatus == RelicQueueStatus.None)
     {
-        <p>Not queued</p>
+<p>Not queued</p>
     }
-    <EditForm Model="model" OnValidSubmit="Queue">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="form-group">
-            <label>
-                Name:
-                <InputText @bind-Value="model.User" />
-            </label>
-        </div>
+<EditForm Model="model" OnValidSubmit="Queue">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="form-group">
+        <label>
+            Name:
+            <InputText @bind-Value="model.UserDisplayName" disabled="@(!CanEditQueue)" />
+        </label>
+    </div>
 
-        <div class="form-group">
+    <div class="form-group">
 
-            <label>Relic:
-                <InputSelect @bind-Value="model.RelicUniqueName" placeholder="Select relic">
-                    <option value="">Select relic</option>
-                    @foreach (var cnt in FilteredRelics)
+        <label>
+            Relic:
+            <InputSelect @bind-Value="model.RelicUniqueName" disabled="@(!CanEditQueue)">
+                <option value="">Select relic</option>
+                @foreach (var cnt in FilteredRelics)
                     {
-                        <option value="@cnt.UniqueName">@cnt.DisplayName</option>
+                <option value="@cnt.UniqueName">@cnt.DisplayName</option>
                     }
-                </InputSelect>
-                <label>
-                    Include Vaulted relics:
-                    <input type="checkbox" @bind="IncludeVaultedRelics" />
-                </label>
-
+            </InputSelect>
+            <label>
+                Include Vaulted relics:
+                <input type="checkbox" @bind="IncludeVaultedRelics" disabled="@(!CanEditQueue)" />
             </label>
-        </div>
-        @if (SelectedRelic != null)
+
+        </label>
+    </div>
+    @if (SelectedRelic != null)
         {
-            <dl>
-                @foreach (var reward in SelectedRelic.Drops)
+    <dl>
+        @foreach (var reward in SelectedRelic.Drops)
                 {
-                    <dt>@reward.Rarity</dt>
-                    <dd>@reward.Name</dd>
+        <dt>@reward.Rarity</dt>
+        <dd>@reward.Name</dd>
                 }
-            </dl>
-        }
-        <div class="form-group">
-        </div>
-  
-
-
-        <button type="submit" disabled="@(!IsConnected)">Queue</button>
-        @if (RelicQueueStatus == RelicQueueStatus.Queued)
-        {
-            <button @onclick="DeQueue" disabled="@(!IsConnected)">Stop queueing</button>
-        }
-    </EditForm>
-
-    <dl id="relicList">
-        @foreach (var relic in currentQueue)
-        {
-            <dt>@relic.User</dt>
-            <dd>@relic.RelicDisplayName</dd>
-        }
     </dl>
+        }
+
+    <button type="submit" disabled="@(!CanEditQueue)">Queue</button>
+    @if (RelicQueueStatus == RelicQueueStatus.Queued)
+        {
+    <button type="button" @onclick="DeQueue" disabled="@(!IsConnected)">Stop queueing</button>
+        }
+</EditForm>
+
+<dl id="relicList">
+    @foreach (var relic in currentQueue)
+        {
+    <dt>@relic.User</dt>
+    <dd>@relic.RelicDisplayName</dd>
+        }
+</dl>
 }
 else if (RelicQueueStatus == RelicQueueStatus.PartyFound)
 {
-    <h3>Party found!</h3>
-    <p>Relic: @CurrentParty.RelicType.DisplayName</p>
-    @TimeRemaining.Seconds
-    <h4>Members:</h4>
-    <ul>
-        @foreach (var member in CurrentParty.Members)
+<h3>Party found!</h3>
+<p>Relic: @CurrentParty.RelicType.DisplayName</p>
+@TimeRemaining.Seconds
+<h4>Members:</h4>
+<ul>
+    @foreach (var member in CurrentParty.Members)
         {
-            <li>@member.DisplayName: @member.Accepted</li>
+    <li>@member.DisplayName: @member.Accepted</li>
         }
-    </ul>
-    <button @onclick="Accept" disabled="@(!IsConnected)">Accept</button>
+</ul>
+<button @onclick="Accept" disabled="@(!IsConnected)">Accept</button>
 
 
 }
 else if (RelicQueueStatus == RelicQueueStatus.Done)
 {
-    <h3>Party complete!</h3>
-    <p>Relic: @CurrentParty.RelicType.DisplayName</p>
-    <h4>Members:</h4>
-    <ul>
-        @foreach (var member in CurrentParty.Members)
+<h3>Party complete!</h3>
+<p>Relic: @CurrentParty.RelicType.DisplayName</p>
+<h4>Members:</h4>
+<ul>
+    @foreach (var member in CurrentParty.Members)
         {
-            <li>/inv @member.DisplayName</li>
+    <li>/inv @member.DisplayName</li>
         }
-    </ul>
-    <button @onclick="Reset" disabled="@(!IsConnected)">Reset</button>
+</ul>
+<button @onclick="Reset" disabled="@(!IsConnected)">Reset</button>
 }
 
 
@@ -133,8 +131,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
     private TimeSpan TimeRemaining => CurrentParty.DeadLine - DateTime.Now;
 
-    //private Party currentParty;
-    //private RelicType queuedRelic { get; set; }
+    private bool Initialized = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -151,11 +148,11 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         Guid userGuid = Guid.NewGuid();
         try
         {
-            userGuid = await sessionStorage.GetItem<Guid>(key);
+            userGuid = await localStorage.GetItem<Guid>(key);
         }
         catch (ArgumentNullException)
         {
-            await sessionStorage.SetItem<Guid>(key, userGuid);
+            await localStorage.SetItem<Guid>(key, userGuid);
         }
 
 
@@ -168,6 +165,12 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
         hubConnection.On<UserRelicQueueState>("ReceiveUserState", (userState) =>
         {
+            if (!Initialized)
+            {
+                model.UserDisplayName ??= userState.UserDisplayName;
+                model.RelicUniqueName ??= userState.RelicType.UniqueName;
+                Initialized = true;
+            }
             UserRelicQueueState = userState;
             SetupTimer();
             StateHasChanged();
@@ -198,6 +201,9 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
     public bool IsConnected =>
         hubConnection.State == HubConnectionState.Connected;
+
+    public bool CanEditQueue =>
+        IsConnected && RelicQueueStatus == RelicQueueStatus.None;
 
     private readonly Timer DeadlineTimer = new Timer();
 

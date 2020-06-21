@@ -33,7 +33,7 @@ namespace RelicMatcher.Server.Hubs
             if (ticket == null)
             {
                 var queueStatus = RelicQueueStatus.None;
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, null, null);
+                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, null, null, null);
                 await _hubContext.Clients.Clients(connectionIDs).ReceiveUserState(userState);
             }
             else if (ticket.Assignment != null)
@@ -51,13 +51,13 @@ namespace RelicMatcher.Server.Hubs
                     }),
                     DeadLine = ticket.Assignment.DeadLine
                 };
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, party);
+                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, party, ticket.DisplayName);
                 await _hubContext.Clients.Clients(connectionIDs).ReceiveUserState(userState);
             }
             else
             {
                 var queueStatus = RelicQueueStatus.Queued;
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, null);
+                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, null, ticket.DisplayName);
                 await _hubContext.Clients.Clients(connectionIDs).ReceiveUserState(userState);
             }
             //var userState = new UserRelicQueueState();

@@ -10,6 +10,7 @@ namespace RelicMatcher.Client
     public class UserRelicQueueState
     {
         public RelicQueueStatus RelicQueueStatus { get; set; }
+        public string? UserDisplayName { get; set; }
         public RelicType? RelicType { get; set; }
         public Party? Party { get; set;  }
 
@@ -27,11 +28,12 @@ namespace RelicMatcher.Client
         {
                 
         }
-        public UserRelicQueueState(RelicQueueStatus relicQueueStatus, RelicType? relicType, Party? party)
+        public UserRelicQueueState(RelicQueueStatus relicQueueStatus, RelicType? relicType, Party? party, string? userDisplayName)
         {
             RelicQueueStatus = relicQueueStatus;
             RelicType = relicType;
             Party = party;
+            UserDisplayName = userDisplayName;
         }
     }
 

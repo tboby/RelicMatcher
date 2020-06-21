@@ -49,7 +49,7 @@ namespace RelicMatcher.Server.Hubs
         }
         public async Task QueueRelic(RelicQueueInput item)
         {
-            _ticketService.CreateTicket(UserGuid, item.User, _relicListService.GetRelicFromUniqueName(item.RelicUniqueName));
+            _ticketService.CreateTicket(UserGuid, item.UserDisplayName, _relicListService.GetRelicFromUniqueName(item.RelicUniqueName));
             await _relicHubResponseService.RefreshClients(UserGuid);
             await UpdateClients();
         }

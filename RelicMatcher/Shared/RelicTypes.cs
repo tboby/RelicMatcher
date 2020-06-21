@@ -39,7 +39,7 @@ namespace RelicMatcher.Shared
     public class RelicQueueInput
     {
         [Required]
-        public string User { get; set; }
+        public string UserDisplayName { get; set; }
         [Required]
         public string RelicUniqueName { get; set; }
     }
