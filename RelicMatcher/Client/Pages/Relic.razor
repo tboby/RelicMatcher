@@ -28,51 +28,52 @@
     {
 <p>Not queued</p>
     }
-<EditForm Model="model" OnValidSubmit="Queue">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-    <div class="form-group">
-        <label>
-            Name:
-            <InputText @bind-Value="model.UserDisplayName" disabled="@(!CanEditQueue)" />
-        </label>
-    </div>
-
-    <div class="form-group">
-
-        <label>
-            Relic:
-            <InputSelect @bind-Value="model.RelicUniqueName" disabled="@(!CanEditQueue)">
-                <option value="">Select relic</option>
-                @foreach (var cnt in FilteredRelics)
-                    {
-                <option value="@cnt.UniqueName">@cnt.DisplayName</option>
-                    }
-            </InputSelect>
+    <EditForm Model="model" OnValidSubmit="Queue">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="form-group">
             <label>
-                Include Vaulted relics:
-                <input type="checkbox" @bind="IncludeVaultedRelics" disabled="@(!CanEditQueue)" />
+                Name:
+                <InputText @bind-Value="model.UserDisplayName" disabled="@(!CanEditQueue)" />
             </label>
+        </div>
 
-        </label>
-    </div>
-    @if (SelectedRelic != null)
+        <div class="form-group">
+
+            <label>
+                Relic:
+                <InputSelect @bind-Value="model.RelicUniqueName" disabled="@(!CanEditQueue)">
+                    <option value="">Select relic</option>
+                    @foreach (var cnt in FilteredRelics)
+                    {
+                        <option value="@cnt.UniqueName">@cnt.DisplayName</option>
+                    }
+                </InputSelect>
+                <label>
+                    Include Vaulted relics:
+                    <input type="checkbox" @bind="IncludeVaultedRelics" disabled="@(!CanEditQueue)" />
+                </label>
+
+            </label>
+        </div>
+        @if (SelectedRelic != null)
         {
-    <dl>
-        @foreach (var reward in SelectedRelic.Drops)
+            <dl>
+                @foreach (var reward in SelectedRelic.Drops)
                 {
-        <dt>@reward.Rarity</dt>
-        <dd>@reward.Name</dd>
+                    <dt>@reward.Rarity</dt>
+                    <dd>@reward.Name</dd>
                 }
-    </dl>
+            </dl>
         }
 
-    <button type="submit" disabled="@(!CanEditQueue)">Queue</button>
-    @if (RelicQueueStatus == RelicQueueStatus.Queued)
+        <button type="submit" disabled="@(!CanEditQueue)">Queue</button>
+        @if (RelicQueueStatus == RelicQueueStatus.Queued)
         {
-    <button type="button" @onclick="DeQueue" disabled="@(!IsConnected)">Stop queueing</button>
+            <button type="button" @onclick="DeQueue" disabled="@(!IsConnected)">Stop queueing</button>
         }
-</EditForm>
+    </EditForm>
+    <h5>Current queuing users</h5>
 
 <dl id="relicList">
     @foreach (var relic in currentQueue)
