@@ -18,9 +18,9 @@ namespace RelicMatcher.Server.Service
         private Dictionary<Guid, Ticket> Tickets { get; set; } = new Dictionary<Guid, Ticket>();
         //private HashSet<Ticket> Index { get; set; } = new HashSet<Ticket>();
 
-        public Ticket CreateTicket(Guid userGuid, string displayName, RelicType relicType)
+        public Ticket CreateTicket(Guid userGuid, string displayName, Characteristics characteristics, RelicType relicType)
         {
-            var ticket = new Ticket(userGuid, displayName, relicType);
+            var ticket = new Ticket(userGuid, displayName, characteristics, relicType);
             Tickets[userGuid] = ticket;
             return ticket;
         }

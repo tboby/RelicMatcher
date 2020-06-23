@@ -12,6 +12,7 @@ namespace RelicMatcher.Shared
         public Guid UserGuid { get; set; }
         public string DisplayName { get; set; }
         public bool Accepted { get; set; }
+
     }
 
     public class RelicDrop
@@ -30,16 +31,13 @@ namespace RelicMatcher.Shared
 
     public class RelicQueueDisplay
     {
-        [Required]
         public string User { get; set; }
-        [Required]
         public string RelicDisplayName { get; set; }
+        public string Platform { get; set; }
     }
 
     public class RelicQueueInput
     {
-        [Required]
-        public string UserDisplayName { get; set; }
         [Required]
         public string RelicUniqueName { get; set; }
     }

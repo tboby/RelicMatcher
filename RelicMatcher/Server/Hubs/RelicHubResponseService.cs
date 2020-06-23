@@ -17,6 +17,15 @@ namespace RelicMatcher.Server.Hubs
         private readonly ConnectionSessionService _connectionSessionService;
         private readonly TicketService _ticketService;
         private readonly IHubContext<RelicHub, IRelicHub> _hubContext;
+        private IEnumerable<RelicQueueDisplay> QueueList =>
+            _ticketService.GetIndexedTickets()
+                .Select(x => new RelicQueueDisplay()
+                {
+                    RelicDisplayName = x.RelicType.DisplayName,
+                    User = x.DisplayName,
+                    Platform = x.Characteristics.Platform.ToString()
+                });
+
         public RelicHubResponseService(IHubContext<RelicHub, IRelicHub> hubContext, TicketService ticketService, ConnectionSessionService connectionSessionService)
         {
             _hubContext = hubContext;
@@ -33,7 +42,7 @@ namespace RelicMatcher.Server.Hubs
             if (ticket == null)
             {
                 var queueStatus = RelicQueueStatus.None;
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, null, null, null);
+                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, null, null, null, true);
                 await _hubContext.Clients.Clients(connectionIDs).ReceiveUserState(userState);
             }
             else if (ticket.Assignment != null)
@@ -51,13 +60,13 @@ namespace RelicMatcher.Server.Hubs
                     }),
                     DeadLine = ticket.Assignment.DeadLine
                 };
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, party, ticket.DisplayName);
+                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, party, ticket.DisplayName, ticket.Active);
                 await _hubContext.Clients.Clients(connectionIDs).ReceiveUserState(userState);
             }
             else
             {
                 var queueStatus = RelicQueueStatus.Queued;
-                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, null, ticket.DisplayName);
+                UserRelicQueueState userState = new UserRelicQueueState(queueStatus, ticket.RelicType, null, ticket.DisplayName, ticket.Active);
                 await _hubContext.Clients.Clients(connectionIDs).ReceiveUserState(userState);
             }
             //var userState = new UserRelicQueueState();
@@ -67,18 +76,24 @@ namespace RelicMatcher.Server.Hubs
         {
             var groups =
                 _ticketService.GetIndexedTickets()
-                    .GroupBy(x => x.RelicType)
+                    .GroupBy(x => new {x.RelicType, x.Characteristics.Platform})
                     .Where(x => x.Count() >= PartySize);
             foreach (var group in groups)
             {
                 var members = group.Take(PartySize).ToList();
-                _ticketService.CreateAssignment(members, group.Key);
+                _ticketService.CreateAssignment(members, group.Key.RelicType);
                 foreach (var member in members)
                 {
                     await RefreshClients(member.UserGuid);
                 }
             }
         }
+
+        public async Task UpdateClients()
+        {
+            await _hubContext.Clients.All.ReceiveRelicQueue(QueueList);
+        }
+
 
         public async Task ExpireGroups()
         {
@@ -89,6 +104,7 @@ namespace RelicMatcher.Server.Hubs
                 {
                     member.Active = member.Accepted;
                     member.Assignment = null;
+                    await RefreshClients(member.UserGuid);
                 }
             }
         }

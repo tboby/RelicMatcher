@@ -19,7 +19,14 @@
 {
     if (RelicQueueStatus == RelicQueueStatus.Queued)
     {
-<p>Currently queued for relic: @QueuedRelic.DisplayName</p>
+        if (Active)
+        {
+            <p>Currently queued for relic: @QueuedRelic.DisplayName</p>
+        }
+        else
+        {
+            <p>Inactive, missed group for relic: @QueuedRelic.DisplayName</p>
+        }
     }
     else if (IsConnected == false)
     {
@@ -34,10 +41,8 @@
         <ValidationSummary />
         <div class="form-group">
             <label>
-               
                 Name: @UserSettings?.DisplayName
             </label>
-        <input type="hidden" @bind="model.UserDisplayName"/>
         </div>
 
         <div class="form-group">
@@ -81,7 +86,7 @@
     @foreach (var relic in currentQueue)
         {
     <dt>@relic.User</dt>
-    <dd>@relic.RelicDisplayName</dd>
+    <dd>@relic.RelicDisplayName, @relic.Platform</dd>
         }
 </dl>
 }
@@ -121,6 +126,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
     private RelicQueueStatus RelicQueueStatus => UserRelicQueueState.RelicQueueStatus;
     private RelicType? QueuedRelic => UserRelicQueueState.RelicType;
     private Party? CurrentParty => UserRelicQueueState.Party;
+    private bool Active => UserRelicQueueState.Active;
     //private RelicQueueState RelicQueueState { get; set; } = RelicQueueState.None;
     private RelicQueueInput model { get; set; } = new RelicQueueInput();
     private IEnumerable<RelicType> Relics { get; set; } = new List<RelicType>();
@@ -147,11 +153,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         UserSettings = await UserStateService.GetUserSettings();
         if (UserSettings == null)
         {
-            NavigationManager.NavigateTo("/settings/firstTime", true);
-        }
-        else
-        {
-            model.UserDisplayName = UserSettings.DisplayName;
+            NavigationManager.NavigateTo("/settings/firstTime");
         }
 
         UserRelicQueueState = UserRelicQueueState.DefaultState;
@@ -169,7 +171,6 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         {
             if (!Initialized)
             {
-                model.UserDisplayName ??= userState?.UserDisplayName;
                 model.RelicUniqueName ??= userState?.RelicType?.UniqueName;
                 Initialized = true;
             }
@@ -191,8 +192,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
     Task Queue()
     {
-        model.UserDisplayName = UserSettings.DisplayName;
-        return hubConnection.SendAsync("QueueRelic", model);
+        return hubConnection.SendAsync("QueueRelic", model, UserSettings);
     }
 
     Task DeQueue() =>
@@ -208,7 +208,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         hubConnection.State == HubConnectionState.Connected;
 
     public bool CanEditQueue =>
-        IsConnected && RelicQueueStatus == RelicQueueStatus.None;
+        IsConnected && (RelicQueueStatus == RelicQueueStatus.None || !Active);
 
     private readonly Timer DeadlineTimer = new Timer();
 

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using RelicMatcher.Client;
 using RelicMatcher.Client.Pages;
+using RelicMatcher.Client.ViewModels;
 using RelicMatcher.Server.Service;
 using RelicMatcher.Shared;
 
@@ -18,7 +19,6 @@ namespace RelicMatcher.Server.Hubs
         private readonly ILogger<RelicHub> _logger;
         private readonly RelicListService _relicListService;
         private readonly RelicHubResponseService _relicHubResponseService;
-        private IEnumerable<RelicQueueDisplay> QueueList => _ticketService.GetIndexedTickets().Select(x => new RelicQueueDisplay(){RelicDisplayName = x.RelicType.DisplayName, User = x.DisplayName});
         private IEnumerable<Ticket> CurrentQueue => _ticketService.GetIndexedTickets();
 
         //private int 
@@ -38,27 +38,33 @@ namespace RelicMatcher.Server.Hubs
         {
             _connectionSessionService.SetUserForConnection(Context.ConnectionId, sessionUserGuid);
             var ticket = _ticketService.GetTicket(sessionUserGuid);
-            if (ticket != null)
-            {
-                _ticketService.SetTicketActiveState(ticket, true);
-            }
+            //if (ticket != null)
+            //{
+            //    _ticketService.SetTicketActiveState(ticket, true);
+            //}
 
             await _relicHubResponseService.RefreshClients(UserGuid);
-            await UpdateClients();
+            await _relicHubResponseService.UpdateClients();
 
         }
-        public async Task QueueRelic(RelicQueueInput item)
+        public async Task QueueRelic(RelicQueueInput item, UserSettings userSettings)
         {
-            _ticketService.CreateTicket(UserGuid, item.UserDisplayName, _relicListService.GetRelicFromUniqueName(item.RelicUniqueName));
+            var characteristics = new Characteristics()
+            {
+                PreferredRegion = userSettings.PreferredRegion.Value,
+                Platform = userSettings.Platform.Value,
+                HostPreference = userSettings.HostPreference.Value
+            };
+            _ticketService.CreateTicket(UserGuid, userSettings.DisplayName, characteristics, _relicListService.GetRelicFromUniqueName(item.RelicUniqueName));
             await _relicHubResponseService.RefreshClients(UserGuid);
-            await UpdateClients();
+            await _relicHubResponseService.UpdateClients();
         }
 
         public async Task DeQueueRelic()
         {
             _ticketService.DeleteTicket(UserGuid);
             await _relicHubResponseService.RefreshClients(UserGuid);
-            await UpdateClients();
+            await _relicHubResponseService.UpdateClients();
         }
 
         public async Task AcceptAssignment()
@@ -75,7 +81,7 @@ namespace RelicMatcher.Server.Hubs
         {
             _ticketService.DeleteTicket(UserGuid);
             await _relicHubResponseService.RefreshClients(UserGuid);
-            await Clients.Caller.ReceiveRelicQueue(QueueList);
+            await _relicHubResponseService.UpdateClients();
         }
         public override async Task OnConnectedAsync()
         {
@@ -83,13 +89,6 @@ namespace RelicMatcher.Server.Hubs
             //await Clients.Caller.SendAsync("ReceiveRelicQueue", QueueList);
             await base.OnConnectedAsync();
         }
-
-
-        private async Task UpdateClients()
-        {
-            await Clients.All.ReceiveRelicQueue(QueueList);
-        }
-
 
         private async Task UpdateParty(Assignment assignment)
         {
@@ -114,7 +113,7 @@ namespace RelicMatcher.Server.Hubs
             {
                 _ticketService.SetTicketActiveState(ticket, false);
             }
-            await UpdateClients();
+            await _relicHubResponseService.UpdateClients();
             await base.OnDisconnectedAsync(exception);
         }
     }

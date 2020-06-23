@@ -20,6 +20,7 @@ namespace RelicMatcher.Server.Service
         {
             await _relicHubResponseService.CheckForGroups();
             await _relicHubResponseService.ExpireGroups();
+            await _relicHubResponseService.UpdateClients();
         }
     }
 }
