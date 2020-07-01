@@ -30,15 +30,15 @@
     }
     else if (IsConnected == false)
     {
-<p>Connecting...</p>
+        <p>Connecting...</p>
     }
     else if (RelicQueueStatus == RelicQueueStatus.None)
     {
-<p>Not queued</p>
+        <p>Not queued</p>
     }
     <EditForm Model="model" OnValidSubmit="Queue">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
         <div class="form-group">
             <label>
                 Name: @UserSettings?.DisplayName
@@ -58,7 +58,7 @@
                 </InputSelect>
                 <label>
                     Include Vaulted relics:
-                    <input type="checkbox" @bind="IncludeVaultedRelics" disabled="@(!CanEditQueue)" />
+                    <input type="checkbox" @bind="IncludeVaultedRelics" disabled="@(!CanEditQueue)"/>
                 </label>
 
             </label>
@@ -82,42 +82,65 @@
     </EditForm>
     <h5>Current queuing users</h5>
 
-<dl id="relicList">
-    @foreach (var relic in currentQueue)
+    <dl id="relicList">
+        @foreach (var relic in currentQueue)
         {
-    <dt>@relic.User</dt>
-    <dd>@relic.RelicDisplayName, @relic.Platform</dd>
+            <dt>@relic.User</dt>
+            <dd>@relic.RelicDisplayName, @relic.Platform</dd>
         }
-</dl>
+    </dl>
 }
 else if (RelicQueueStatus == RelicQueueStatus.PartyFound)
 {
-<h3>Party found!</h3>
-<p>Relic: @CurrentParty.RelicType.DisplayName</p>
-@TimeRemaining.Seconds
-<h4>Members:</h4>
-<ul>
-    @foreach (var member in CurrentParty.Members)
+    <h3>Party found!</h3>
+    <p>Relic: @CurrentParty.RelicType.DisplayName</p>
+    @TimeRemaining.Seconds
+    <h4>Members:</h4>
+    <ul>
+        @foreach (var member in CurrentParty.Members)
         {
-    <li>@member.DisplayName: @member.Accepted</li>
+            <li>@member.DisplayName: @member.Accepted</li>
         }
-</ul>
-<button @onclick="Accept" disabled="@(!IsConnected)">Accept</button>
-
-
+    </ul>
+    <button @onclick="Accept" disabled="@(!IsConnected)">Accept</button>
 }
 else if (RelicQueueStatus == RelicQueueStatus.Done)
 {
-<h3>Party complete!</h3>
-<p>Relic: @CurrentParty.RelicType.DisplayName</p>
-<h4>Members:</h4>
-<ul>
-    @foreach (var member in CurrentParty.Members)
+    <h3>Party complete!</h3>
+    <p>Relic: @CurrentParty.RelicType.DisplayName</p>
+    <h4>Members:</h4>
+    <ul>
+        @if (AmHost)
         {
-    <li>/inv @member.DisplayName</li>
+            @:You are host, please invite the players below.
+            @foreach (var member in CurrentParty.Members)
+            {
+                @if (member.Host)
+                {
+                    <li>@member.DisplayName</li>
+                }
+                else
+                {
+                    <li>/inv @member.DisplayName</li>
+                }
+            }
         }
-</ul>
-<button @onclick="Reset" disabled="@(!IsConnected)">Reset</button>
+        else
+        {
+            @foreach (var member in CurrentParty.Members)
+            {
+                @if (member.Host)
+                {
+                    <li>Host: @member.DisplayName</li>
+                }
+                else
+                {
+                    <li>@member.DisplayName</li>
+                }
+            }
+        }
+    </ul>
+    <button @onclick="Reset" disabled="@(!IsConnected)">Reset</button>
 }
 
 
@@ -127,6 +150,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
     private RelicType? QueuedRelic => UserRelicQueueState.RelicType;
     private Party? CurrentParty => UserRelicQueueState.Party;
     private bool Active => UserRelicQueueState.Active;
+    private bool AmHost => CurrentParty.Members.FirstOrDefault(x => x.UserGuid == UserGuid).Host;
     //private RelicQueueState RelicQueueState { get; set; } = RelicQueueState.None;
     private RelicQueueInput model { get; set; } = new RelicQueueInput();
     private IEnumerable<RelicType> Relics { get; set; } = new List<RelicType>();
@@ -142,12 +166,12 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
 
     private bool Initialized = false;
     private UserSettings UserSettings { get; set; }
+    private Guid UserGuid { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/relicHub"), opts => { })
-
             .ConfigureLogging(logging => logging.AddProvider(LoggerProvider))
             .Build();
         UserSettings = await UserStateService.GetUserSettings();
@@ -159,7 +183,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         UserRelicQueueState = UserRelicQueueState.DefaultState;
         Relics = await Http.GetFromJsonAsync<List<RelicType>>("api/RelicData");
 
-        var userGuid = await UserStateService.GetOrCreateUserSession();
+        UserGuid = await UserStateService.GetOrCreateUserSession();
 
         hubConnection.On<List<RelicQueueDisplay>>("ReceiveRelicQueue", (relics) =>
         {
@@ -183,8 +207,7 @@ else if (RelicQueueStatus == RelicQueueStatus.Done)
         DeadlineTimer.Elapsed += OnTimedEvent;
 
         await hubConnection.StartAsync();
-        await ConnectUser(userGuid);
-
+        await ConnectUser(UserGuid);
     }
 
     Task ConnectUser(Guid sessionUser) =>

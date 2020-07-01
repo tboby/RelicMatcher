@@ -58,9 +58,9 @@ namespace RelicMatcher.Server.Service
         {
             ticket.Active = active;
         }
-        public Assignment CreateAssignment(ICollection<Ticket> tickets, RelicType relicType)
+        public Assignment CreateAssignment(ICollection<Ticket> tickets, RelicType relicType, Ticket host)
         {
-            var assignment = new Assignment(relicType, tickets.ToList(), DateTime.Now.AddSeconds(30));
+            var assignment = new Assignment(relicType, tickets.ToList(), DateTime.Now.AddSeconds(30), host);
             foreach (var ticket in tickets)
             {
                 ticket.Assignment = assignment;

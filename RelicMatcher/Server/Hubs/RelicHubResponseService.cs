@@ -56,7 +56,8 @@ namespace RelicMatcher.Server.Hubs
                     {
                         Accepted = x.Accepted,
                         UserGuid = x.UserGuid,
-                        DisplayName = x.DisplayName
+                        DisplayName = x.DisplayName,
+                        Host = ticket.Assignment.Host == x
                     }),
                     DeadLine = ticket.Assignment.DeadLine
                 };
@@ -81,7 +82,7 @@ namespace RelicMatcher.Server.Hubs
             foreach (var group in groups)
             {
                 var members = group.Take(PartySize).ToList();
-                _ticketService.CreateAssignment(members, group.Key.RelicType);
+                _ticketService.CreateAssignment(members, group.Key.RelicType, members.First());
                 foreach (var member in members)
                 {
                     await RefreshClients(member.UserGuid);

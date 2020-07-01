@@ -12,7 +12,7 @@ namespace RelicMatcher.Shared
         public Guid UserGuid { get; set; }
         public string DisplayName { get; set; }
         public bool Accepted { get; set; }
-
+        public bool Host { get; set; }
     }
 
     public class RelicDrop
