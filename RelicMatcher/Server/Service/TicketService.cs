@@ -54,10 +54,6 @@ namespace RelicMatcher.Server.Service
             return Tickets.Values.Where(x => x.Assignment == null && x.Active).ToImmutableList();
         }
 
-        public void SetTicketActiveState(Ticket ticket, bool active)
-        {
-            ticket.Active = active;
-        }
         public Assignment CreateAssignment(ICollection<Ticket> tickets, RelicType relicType, Ticket host)
         {
             var assignment = new Assignment(relicType, tickets.ToList(), DateTime.Now.AddSeconds(30), host);

@@ -81,8 +81,11 @@ namespace RelicMatcher.Server.Hubs
                     .Where(x => x.Count() >= PartySize);
             foreach (var group in groups)
             {
-                var members = group.Take(PartySize).ToList();
-                _ticketService.CreateAssignment(members, group.Key.RelicType, members.First());
+                var members = group.OrderBy(x => x.TimeStamp);
+                var host = members.First(x => x.Characteristics.HostPreference != HostPreference.CannotHost);
+                var restOfGroup = members.Where(x => x != host).Take(PartySize - 1).ToList();
+                restOfGroup.Add(host);
+                _ticketService.CreateAssignment(restOfGroup, group.Key.RelicType, host); 
                 foreach (var member in members)
                 {
                     await RefreshClients(member.UserGuid);
@@ -103,7 +106,10 @@ namespace RelicMatcher.Server.Hubs
             {
                 foreach (var member in assignment.Members)
                 {
-                    member.Active = member.Accepted;
+                    if (member.Accepted == false)
+                    {
+                        member.SetInactive();
+                    }
                     member.Assignment = null;
                     await RefreshClients(member.UserGuid);
                 }

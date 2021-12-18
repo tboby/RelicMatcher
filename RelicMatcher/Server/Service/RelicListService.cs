@@ -23,7 +23,7 @@ namespace RelicMatcher.Server.Service
         private List<RelicType> LoadRelics()
         {
             using var webClient = new System.Net.WebClient();
-            var json = webClient.DownloadString("https://github.com/WFCD/warframe-items/blob/development/data/json/Relics.json?raw=true");
+            var json = webClient.DownloadString("https://github.com/WFCD/warframe-items/blob/master/data/json/Relics.json?raw=true");
             dynamic result = JsonConvert.DeserializeObject(json);
             var list = new List<RelicType>();
             foreach (dynamic relic in result)

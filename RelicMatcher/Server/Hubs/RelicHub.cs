@@ -109,10 +109,7 @@ namespace RelicMatcher.Server.Hubs
         public override async Task OnDisconnectedAsync(Exception exception)
         {
             var ticket = _ticketService.GetTicket(UserGuid);
-            if (ticket != null)
-            {
-                _ticketService.SetTicketActiveState(ticket, false);
-            }
+            ticket?.SetInactive();
             await _relicHubResponseService.UpdateClients();
             await base.OnDisconnectedAsync(exception);
         }
